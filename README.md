@@ -1,62 +1,60 @@
 # Favorita Beleza e Bem-Estar · Sistema de agendamento
 
-Protótipo do app de agendamento do salão Favorita (app da cliente + painel da dona) e **prints de todas as telas**, para servir de base ao redesign.
+Protótipo do app de agendamento do salão Favorita (app da cliente + painel da dona), já no **redesign feito no Claude Design**, e prints de todas as telas.
 
-> Serviços, preços, profissionais, clientes e o comprovante do Pix são **dados de exemplo**.
+> Serviços, preços, profissionais, clientes, lançamentos e o comprovante do Pix são **dados de exemplo**.
 
 ## Pastas
 
-- `prints/cliente/` e `prints/salao/`: cada tela em dois arquivos. `NN-nome.png` é o que aparece na tela do celular; `NN-nome-pagina-inteira.png` é a tela rolada até o fim. Tamanho de celular (400 × 860, em alta resolução 2x).
-- `prototipo/index.html`: o protótipo clicável (abre no navegador; botão no topo alterna Cliente e Salão). Logos da marca na mesma pasta.
-- `design-original-stitch/`: as 4 telas que o Google Stitch gerou no começo, antes de adaptar para a Favorita.
-- `prints/gerar-prints.js`: roteiro que refaz todos os prints automaticamente (Playwright).
+- `prototipo/index.html`: o protótipo clicável (abre no navegador; botão no topo alterna Cliente e Salão). `prototipo/testar.js` roda 29 testes de ponta a ponta.
+- `prints/cliente/` e `prints/salao/`: cada tela em dois arquivos, `NN-nome.png` (tela do celular, 390 × 844, alta resolução) e `NN-nome-pagina-inteira.png`. `prints/gerar-prints.js` refaz todos.
+- `Mobile app design project.zip`: o pacote do redesign exportado do Claude Design (handoff com README de tokens).
+- `redesign-claude-design/`: as 7 telas do redesign, para comparar com o protótipo.
+- `design-original-stitch/`: as 4 telas do primeiro rascunho, no Google Stitch.
 
-## App da cliente (17 telas)
+A versão anterior dos prints (antes do redesign) continua no histórico do Git.
 
-| Arquivo | Tela |
-|---|---|
-| `01-catalogo-cabelo.png` | Catálogo inicial (sem perfil), categoria Cabelo |
-| `02-catalogo-unhas.png` | Catálogo, categoria Unhas |
-| `03-catalogo-sobrancelha.png` | Catálogo, categoria Sobrancelha e cílios |
-| `04-catalogo-estetica.png` | Catálogo, categoria Estética |
-| `05-catalogo-escolher-opcao.png` | Serviço com opções (Selagem): escolher curto, médio ou longo |
-| `06-sacola-com-servicos.png` | Sacola com 2 serviços: barra inferior com total e tempo |
-| `07-agendar-profissional.png` | Passo 2: cards grandes de profissional (Qualquer uma selecionada) |
-| `08-agendar-dia-e-horario.png` | Passo 2: profissional, dia e horário escolhidos |
-| `09-confirmar-sem-perfil.png` | Passo 3: resumo + dados (sem perfil ainda) + observação + Pix |
-| `10-confirmar-pagar-no-salao.png` | Passo 3: pagar no salão (cartão de crédito ou dinheiro) |
-| `11-pix-qr-e-copia-e-cola.png` | Pix: QR, copia e cola, aguardando pagamento |
-| `12-meus-horarios-aguardando.png` | Meus horários: aguardando aprovação do salão |
-| `13-perfil-sem-foto.png` | Perfil: nome, WhatsApp, endereço (sem foto) |
-| `14-perfil-com-foto.png` | Perfil com foto |
-| `15-catalogo-com-perfil.png` | Catálogo com saudação pelo nome |
-| `16-confirmar-com-perfil.png` | Passo 3 com perfil salvo (foto e dados prontos) |
-| `17-meus-horarios-respostas.png` | Meus horários: confirmado e não aprovado (com motivo) |
-
-## Painel do salão (17 telas)
+## App da cliente (13 telas)
 
 | Arquivo | Tela |
 |---|---|
-| `01-pedidos-para-aprovar.png` | Pedidos: números do dia + pedidos esperando aprovação |
-| `02-pedido-resumo-pix.png` | Resumo do pedido (Pix): cliente com foto, serviço, observação, pagamento, comprovante, mensagens, histórico |
-| `03-comprovante-pix.png` | Comprovante do Pix em tela cheia |
-| `04-comprovante-zoom.png` | Comprovante com zoom |
+| `01-perfil-vazio.png` | Perfil sem dados |
+| `02-perfil-com-foto.png` | Perfil com foto e dados |
+| `03-catalogo.png` | Catálogo: saudação, categorias, serviços |
+| `04-escolher-opcao.png` | Folha para escolher a opção (Selagem curto/médio/longo) |
+| `05-sacola-flutuante.png` | Sacola flutuante dourada com 2 serviços |
+| `06-catalogo-unhas.png` | Catálogo, categoria Unhas |
+| `07-agendar.png` | Agendar: stepper, sacola, profissional, dia, horário |
+| `08-agendar-escolhido.png` | Agendar com Ana, dia e horário escolhidos |
+| `09-confirmar-pix.png` | Confirmar: resumo, pagamento Pix, observação |
+| `10-confirmar-no-salao.png` | Confirmar: no salão, cartão ou dinheiro |
+| `11-pix.png` | Pix: valor, QR, copia e cola |
+| `12-meus-horarios-aguardando.png` | Meus horários: aguardando salão |
+| `13-meus-horarios-respostas.png` | Meus horários: confirmado e não aprovado |
+
+## Painel do salão (14 telas)
+
+| Arquivo | Tela |
+|---|---|
+| `01-pedidos.png` | Pedidos: números do dia e pedidos para aprovar |
+| `02-resumo-do-pedido.png` | Resumo do pedido: cliente, serviço, observação, pagamento, comprovante, mensagens, histórico |
+| `03-comprovante-zoom.png` | Comprovante do Pix com zoom |
+| `04-reprovar-motivo.png` | Reprovar: folha com motivos |
 | `05-pedido-aprovado.png` | Pedido aprovado |
-| `06-reprovar-escolher-motivo.png` | Reprovar: escolher motivo |
-| `07-pedido-reprovado.png` | Pedido reprovado |
-| `08-agenda-do-dia.png` | Agenda: atendimentos confirmados por dia |
-| `09-servicos-lista.png` | Serviços: lista por categoria com chave disponível/pausado |
-| `10-servico-editar-com-opcoes.png` | Editar serviço (Selagem) com opções de preço e tempo |
-| `11-servico-nova-opcao.png` | Adicionar opção ao serviço |
-| `12-servico-novo.png` | Novo serviço (em branco) |
-| `13-categorias.png` | Categorias: renomear, excluir, adicionar |
-| `14-equipe.png` | Equipe: profissionais com especialidade e expediente |
-| `15-profissional-nova.png` | Nova profissional: foto, nome, especialidades, descrição, expediente |
-| `16-profissional-editar.png` | Editar profissional |
-| `17-profissional-excluir.png` | Excluir profissional (bloqueia se tiver agendamento) |
+| `06-agenda.png` | Agenda: dias, números, filtro por profissional, linha do tempo |
+| `07-financeiro.png` | Financeiro: faturamento do dia, formas, lançamentos |
+| `08-fechar-caixa.png` | Fechar caixa: resumo por forma |
+| `09-caixa-fechado.png` | Caixa fechado |
+| `10-servicos.png` | Serviços por categoria |
+| `11-editar-servico.png` | Editar serviço com opções |
+| `12-categorias.png` | Categorias |
+| `13-equipe.png` | Equipe |
+| `14-editar-profissional.png` | Editar profissional: foto, especialidades, horário, cor na agenda |
 
-## Regras do fluxo (já decididas)
+## Regras do fluxo
 
 - Pagamento: **Pix no app** (Mercado Pago, valor calculado no servidor pela sacola) ou **no salão** (cartão de crédito ou dinheiro).
 - **Todo agendamento passa pela aprovação da dona.** Pix só chega para ela depois de pago; se reprovar, o Pix volta para a cliente.
+- **Ao aprovar, o pedido vira um lançamento no Financeiro.** A dona fecha o caixa do dia por lá.
 - A cliente tem perfil (foto, nome, WhatsApp, endereço) e pode deixar observação no agendamento.
+- A confirmar com a dona: cartão e dinheiro entram no Financeiro na aprovação ou só quando o atendimento for concluído.
