@@ -10,6 +10,7 @@ window.MARCA = (() => {
     nome: "Favorita",                           // nome curto, usado em mensagens ("seu horário no Favorita")
     nomeCompleto: "Favorita Beleza e Bem-Estar",
     logo: pasta + "logo.png",                   // logo escura, para fundo claro
+    api: "https://api-favorita.lecomigo.tech",  // servidor do salão (na VPS). O app da cliente e o painel falam com ele; a demo/ não usa
     salao: {
       fone: "94991616209",                      // WhatsApp do salão com DDD, só números: (94) 99161-6209
       mapa: "https://maps.google.com/?q=Favorita+Beleza+e+Bem-Estar+Tucurui"   // link do "Como chegar" (EXEMPLO: trocar)
