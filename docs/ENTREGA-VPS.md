@@ -93,5 +93,5 @@ O app da cliente e o painel precisam se atualizar sozinhos (pedido novo aparece 
 
 - Serviços, preços, durações e profissionais reais (hoje são exemplo).
 - Credencial do Mercado Pago **da conta do salão**.
-- WhatsApp e endereço do salão (para "Falar no WhatsApp" e "Como chegar").
+- Endereço do salão para o "Como chegar" (o WhatsApp já está em `marca.js`: (94) 99161-6209).
 - Cartão e dinheiro entram no Financeiro na aprovação (como está) ou só quando o atendimento for concluído?

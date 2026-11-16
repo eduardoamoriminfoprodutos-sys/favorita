@@ -11,7 +11,7 @@ window.MARCA = (() => {
     nomeCompleto: "Favorita Beleza e Bem-Estar",
     logo: pasta + "logo.png",                   // logo escura, para fundo claro
     salao: {
-      fone: "94900000000",                      // WhatsApp do salão com DDD, só números (EXEMPLO: trocar)
+      fone: "94991616209",                      // WhatsApp do salão com DDD, só números: (94) 99161-6209
       mapa: "https://maps.google.com/?q=Favorita+Beleza+e+Bem-Estar+Tucurui"   // link do "Como chegar" (EXEMPLO: trocar)
     },
     /* Cores: só coloque aqui as que mudam em relação ao padrão (bege e dourado da Favorita).
