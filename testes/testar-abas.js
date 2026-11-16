@@ -10,7 +10,8 @@ const { chromium } = require('playwright');
   const ok = (c, m) => console.log((c ? 'OK   ' : 'FALHA') + ' ' + m);
 
   const capa = await nova('');
-  ok((await capa.title()).includes('Favorita'), 'capa com o nome da marca: ' + await capa.title());
+  const nomeMarca = await capa.evaluate(() => MARCA.nome);
+  ok((await capa.title()).includes(nomeMarca), 'capa com o nome da marca: ' + await capa.title());
   ok(await capa.$eval('#logo', i => i.naturalWidth > 0), 'logo carrega na capa');
   await capa.screenshot({ path: OUT + '/capa.png', fullPage: true });
 

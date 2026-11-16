@@ -252,7 +252,7 @@ textarea { min-height: 72px; resize: vertical; }
 .dbox.dim em { color: var(--faint-2); }
 .bline h3 { font-size: 15px; font-weight: 700; }
 .who { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; margin-top: 5px; }
-.acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--line-2); padding-top: 14px; }
+.acts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; border-top: 1px solid var(--line-2); padding-top: 14px; }
 .why { display: flex; gap: 10px; align-items: flex-start; background: var(--bad-soft); border-radius: 14px; padding: 12px 14px; font-size: 13px; color: var(--ink-2); }
 .why i { width: 20px; height: 20px; border-radius: 50%; background: var(--bad); color: #FFFFFF; font-style: normal; font-weight: 700; font-size: 12px; display: grid; place-items: center; flex: none; }
 .empty { text-align: center; color: var(--muted); padding: 30px 16px; border: 1.5px dashed var(--line); border-radius: 20px; font-size: 13.5px; display: flex; flex-direction: column; gap: 12px; align-items: center; }

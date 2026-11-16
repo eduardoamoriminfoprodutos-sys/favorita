@@ -5,11 +5,13 @@
 /* ===== APP DA CLIENTE ===== */
 
 /* Falar com o salão no WhatsApp, com mensagem pronta (o número vem de marca.js) */
-const waSalao = msg => "https://wa.me/55" + SALAO.fone + (msg ? "?text=" + encodeURIComponent(msg) : "");
+const FONE_SALAO = String(SALAO.fone || "").replace(/\D/g, "");   /* sem número em marca.js, os botões de WhatsApp não aparecem */
+const waSalao = msg => "https://wa.me/55" + FONE_SALAO + (msg ? "?text=" + encodeURIComponent(msg) : "");
 const IC_WA = sv('<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/>');
-const btnWa = (msg, texto = "Chamar no WhatsApp", extra = "") => `<a class="btn wa-btn ${extra}" href="${waSalao(msg)}" target="_blank" rel="noopener">${IC_WA}${texto}</a>`;
+const btnWa = (msg, texto = "Chamar no WhatsApp", extra = "") => !FONE_SALAO ? "" : `<a class="btn wa-btn ${extra}" href="${waSalao(msg)}" target="_blank" rel="noopener">${IC_WA}${texto}</a>`;
 const msgOla = assunto => "Olá! Vim pelo app " + MARCA.nome + " e " + assunto;
 function cardWhats(titulo, texto, msg) {
+  if (!FONE_SALAO) return "";
   return `<div class="card wa-card"><span class="wa-ic">${IC_WA}</span><div style="min-width:0"><h3>${titulo}</h3><p class="meta">${texto}</p></div>${btnWa(msg, "Chamar no WhatsApp", "full")}</div>`;
 }
 function vCatalogo() {
@@ -117,7 +119,7 @@ function vMeus() {
   const prox = mine.filter(b => b.day >= HOJE).sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
   const hist = mine.filter(b => b.day < HOJE);
   const list = S.meusTab === "prox" ? prox : hist;
-  const wa = "https://wa.me/55" + SALAO.fone;
+  const wa = waSalao();
   return `<section class="view">
     <h1 class="pad-x" style="margin-top:12px">Meus horários</h1>
     <div class="segm" role="group"><button type="button" data-meus="prox" aria-pressed="${S.meusTab === "prox"}">Próximos · ${prox.length}</button><button type="button" data-meus="hist" aria-pressed="${S.meusTab === "hist"}">Histórico</button></div>
@@ -126,7 +128,7 @@ function vMeus() {
       return `<article class="card bcard"><div class="row">${statusPill(b)}<span class="meta">${payText(b)}</span></div>
         <div class="bline"><span class="dbox ${off ? "dim" : ""}"><small>${WD[d.getDay()]}</small><b>${d.getDate()}</b><em>${MES[d.getMonth()].slice(0, 3)}</em></span>
           <div style="min-width:0"><h3>${esc(nomes(b.itens))}</h3><p class="meta">${b.time} – ${toHM(toMin(b.time) + mins(b.itens))}</p><div class="who">${ava(p.foto, p.nome, "xs")}com ${esc(p.nome)} · ${fmt(sum(b.itens))}</div></div></div>
-        ${b.status === "aprovado" ? `<div class="acts"><a class="btn soft" href="${SALAO.mapa}" target="_blank" rel="noopener">Como chegar</a><a class="btn soft" href="${wa}" target="_blank" rel="noopener">Falar no WhatsApp</a></div>` : ""}
+        ${b.status === "aprovado" ? `<div class="acts"><a class="btn soft" href="${SALAO.mapa}" target="_blank" rel="noopener">Como chegar</a>${FONE_SALAO ? `<a class="btn soft" href="${wa}" target="_blank" rel="noopener">Falar no WhatsApp</a>` : ""}</div>` : ""}
         ${off ? `<div class="why"><i>!</i><span><b>${esc(b.motivo || "Não aprovado")}.</b> ${b.refund ? "Seu Pix de " + fmt(sum(b.itens)) + " foi devolvido." : "Escolha outro, sem custo."}</span></div>
           <button class="btn-gold" type="button" data-go="agendar" data-refaz="${b.id}"><span style="width:17px;height:17px;display:inline-grid">${IC.cal}</span>Escolher outro horário</button>` : ""}
         ${b.status === "pix" ? `<button class="btn full" type="button" data-pagar="${b.id}">Pagar Pix</button>` : ""}
