@@ -26,4 +26,6 @@ window.MARCA = (() => {
 (() => {
   const r = document.documentElement.style;
   Object.entries(window.MARCA.cores || {}).forEach(([k, v]) => r.setProperty(k, v));
+  const fundo = (window.MARCA.cores || {})["--bg"], meta = document.querySelector('meta[name="theme-color"]');
+  if (fundo && meta) meta.setAttribute("content", fundo);   /* cor da barra do navegador no celular */
 })();

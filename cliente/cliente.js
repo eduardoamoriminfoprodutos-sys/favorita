@@ -156,9 +156,10 @@ function vPerfil() {
 function drawQR() {
   const c = document.getElementById("qr"); if (!c) return;
   const x = c.getContext("2d"), n = 29; let h = 2166136261 ^ S.pixFor;
-  x.fillStyle = "#fff"; x.fillRect(0, 0, n, n); x.fillStyle = "#211B18";
+  const tinta = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#211B18";
+  x.fillStyle = "#fff"; x.fillRect(0, 0, n, n); x.fillStyle = tinta;
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { h = Math.imul(h ^ (i * 31 + j), 16777619); if ((h >>> 7) & 1) x.fillRect(i, j, 1, 1); }
-  [[0, 0], [n - 7, 0], [0, n - 7]].forEach(([a, b]) => { x.fillStyle = "#211B18"; x.fillRect(a, b, 7, 7); x.fillStyle = "#fff"; x.fillRect(a + 1, b + 1, 5, 5); x.fillStyle = "#211B18"; x.fillRect(a + 2, b + 2, 3, 3); });
+  [[0, 0], [n - 7, 0], [0, n - 7]].forEach(([a, b]) => { x.fillStyle = tinta; x.fillRect(a, b, 7, 7); x.fillStyle = "#fff"; x.fillRect(a + 1, b + 1, 5, 5); x.fillStyle = tinta; x.fillRect(a + 2, b + 2, 3, 3); });
 }
 function readPerfilFields() {
   const el = document.getElementById("p-nome");
