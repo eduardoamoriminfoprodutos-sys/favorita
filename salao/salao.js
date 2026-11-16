@@ -26,7 +26,7 @@ function receipt(b) {
 /* ===== PAINEL DO SALÃO ===== */
 /* concluir: por enquanto a dona marca no painel. Com o acesso por colaboradora (ver docs/FUTURO-ACESSO-COLABORADORAS.md),
    a própria profissional conclui os atendimentos dela. */
-const podeConcluir = b => b.status === "aprovado" && !DADOS.servidor;   /* com servidor: entra quando a rota /concluir existir (docs/ENTREGA-VPS.md) */
+const podeConcluir = b => b.status === "aprovado";
 function vEntrar() {
   return `<section class="view">
     <div class="top"><img src="${LOGO}" alt="${esc(MARCA.nome)}"><div class="top-r"><span class="eyebrow">Painel</span><b>Acesso do salão</b></div></div>
@@ -243,11 +243,11 @@ function vProPerfil() {
     </div>
     ${tagsOrd.length ? `<div class="card sec"><span class="eyebrow">O que as clientes mais dizem</span><div class="rtags big">${tagsOrd.map(([x, c]) => `<span class="${TAGS_RUINS.includes(x) ? "ruim" : "bom"}">${esc(x)} · ${c}</span>`).join("")}</div></div>` : ""}
     <div class="card sec"><div class="row"><span class="eyebrow">Comentários</span><div class="segm mini" role="group"><button type="button" data-avf="todas" aria-pressed="${filtro === "todas"}">Todas</button><button type="button" data-avf="neg" aria-pressed="${filtro === "neg"}">Negativas</button><button type="button" data-avf="pos" aria-pressed="${filtro === "pos"}">Positivas</button></div></div>
-      <div class="revs">${lista.length ? lista.map(a => cardAvaliacao(a, { dona: !DADOS.servidor })).join("") : `<p class="meta">Nenhuma avaliação neste filtro.</p>`}</div>
+      <div class="revs">${lista.length ? lista.map(a => cardAvaliacao(a, { dona: true })).join("") : `<p class="meta">Nenhuma avaliação neste filtro.</p>`}</div>
       <p class="meta">Esconder do app tira só o texto da vista das clientes. A nota continua contando, para a avaliação ser justa.</p></div>
     <div class="card sec"><span class="eyebrow">Acompanhamento (PDI)</span>
       ${acoes.length ? acoes.map(x => `<div class="pdi"><b>${esc(x.tipo)}</b><small>${dayLabel(x.dia)}</small>${x.texto ? `<p>${esc(x.texto)}</p>` : ""}</div>`).join("") : `<p class="meta">Nenhuma ação registrada ainda.</p>`}
-      ${DADOS.servidor ? `<p class="meta">O registro de PDI entra quando o servidor tiver essa parte (docs/ENTREGA-VPS.md).</p>` : `<div class="sec" style="border-top:1px solid var(--line-2);padding-top:12px"><span class="meta" style="font-weight:600">Registrar ação</span>
+      ${`<div class="sec" style="border-top:1px solid var(--line-2);padding-top:12px"><span class="meta" style="font-weight:600">Registrar ação</span>
         <div class="chips" style="flex-wrap:wrap;margin:0;padding:0" role="group">${PDI_TIPOS.map(x => `<button class="chip" type="button" data-pditipo="${x}" aria-pressed="${pd.tipo === x}">${x}</button>`).join("")}</div>
         <textarea id="pdi-texto" placeholder="Ex.: conversamos sobre pontualidade; combinamos chegar 15 min antes e revisar em 30 dias.">${esc(pd.texto)}</textarea>
         <button class="btn full" type="button" id="pdi-salvar">Registrar ação</button></div>`}
@@ -320,6 +320,11 @@ APP.folhas.caixa = sh => {
       <button class="btn-gold" type="button" id="caixa-ok">${IC.lock}Confirmar fechamento</button>`;
 };
 APP.cliques.push((t, d, e) => {
+  if (d.concluir && DADOS.servidor) {
+    const b = bk(+d.concluir); if (!podeConcluir(b)) return true;
+    fazer(() => DADOS.salao("POST", "/admin/agendamentos/" + b.id + "/concluir"), () => toast("Atendimento concluído. A cliente vai receber o convite para avaliar."));
+    return true;
+  }
   if (d.concluir) {
     const b = bk(+d.concluir); if (!podeConcluir(b)) return true;
     b.status = "concluido"; b.concluidoPor = "Dona"; b.hist.push([hhmm(), "Dona", "Concluiu o atendimento"]);
@@ -330,8 +335,18 @@ APP.cliques.push((t, d, e) => {
   if (d.proview) { S.proView = d.proview; S.avFiltro = "todas"; S.pdiDraft = null; render(); window.scrollTo(0, 0); return true; }
   if (d.proviewfechar) { S.proView = null; render(); window.scrollTo(0, 0); return true; }
   if (d.avf) { S.avFiltro = d.avf; render(); return true; }
+  if (d.ocultar && DADOS.servidor) {
+    const a = S.avaliacoes.find(x => x.id === +d.ocultar), oc = !a.oculto;
+    fazer(() => DADOS.salao("PUT", "/admin/avaliacoes/" + a.id, { oculto: oc }), () => toast(oc ? "Comentário escondido do app. A nota continua contando." : "Comentário visível no app de novo."));
+    return true;
+  }
   if (d.ocultar) { const a = S.avaliacoes.find(x => x.id === +d.ocultar); a.oculto = !a.oculto; toast(a.oculto ? "Comentário escondido do app. A nota continua contando." : "Comentário visível no app de novo."); render(); return true; }
   if (d.pditipo) { S.pdiDraft = { ...(S.pdiDraft || { texto: "" }), tipo: d.pditipo }; render(); return true; }
+  if (t.id === "pdi-salvar" && DADOS.servidor) {
+    const pd = S.pdiDraft || { tipo: PDI_TIPOS[0], texto: "" }, quem = S.proView;
+    fazer(() => DADOS.salao("POST", "/admin/pdi", { pro: quem, tipo: pd.tipo, texto: (pd.texto || "").trim() }), () => { S.pdiDraft = null; toast("Ação registrada no acompanhamento de " + pro(quem).nome + "."); });
+    return true;
+  }
   if (t.id === "pdi-salvar") {
     const pd = S.pdiDraft || { tipo: PDI_TIPOS[0], texto: "" };
     S.pdi.push({ id: ++seq, pro: S.proView, dia: HOJE, tipo: pd.tipo, texto: (pd.texto || "").trim() });

@@ -123,22 +123,22 @@ async function lerCatalogo(q = pool) {
   const pr = (await q.query('select * from profissionais where ativo order by ordem, criado_em')).rows;
   return { cats, services: sv.map(r => svcApp(r, cats)), pros: pr.map(r => proApp(r, cats)), proRows: pr, svcRows: sv };
 }
-const STATUS_APP = { aguardando_pix: 'pix', aguardando: 'aguardando', aprovado: 'aprovado', reprovado: 'reprovado', concluido: 'aprovado' };
+const STATUS_APP = { aguardando_pix: 'pix', aguardando: 'aguardando', aprovado: 'aprovado', reprovado: 'reprovado', concluido: 'concluido' };
 function agApp(r, hist, o = {}) {
   const b = {
     id: r.id, nome: r.cli_nome, fone: foneTxt(r.cli_whats), end: r.cli_end || '', foto: r.cli_foto || '',
     itens: (r.itens || []).map(i => i.chave), pro: r.profissional_id, day: ymd(r.dia), time: r.inicio, fim: r.fim, dur: toMin(r.fim) - toMin(r.inicio),
     obs: r.observacao || '', pay: r.pagamento === 'pix' ? 'pix' : 'salao', payIn: r.pagamento === 'dinheiro' ? 'dinheiro' : 'cartao',
     paid: !!r.pix_pago_em, status: STATUS_APP[r.status] || r.status, motivo: r.motivo || '', refund: !!r.estornado_em, total: reais(r.total_centavos),
-    ex: !!r.exemplo, mine: !!o.mine,
+    ex: !!r.exemplo, mine: !!o.mine, avaliacao: r.av_id || null, concluidoPor: r.concluido_por || '',
     hist: (hist || []).map(h => [quandoTxt(h.quando), h.quem, h.o_que])
   };
   if (r.status === 'aguardando_pix') b.reservaAte = r.reserva_ate;
   if (o.admin && r.pix_pago_em) b.pix = { valor: reais(r.pix_valor_centavos || r.total_centavos), pagoEm: r.pix_pago_em, dia: diaDe(r.pix_pago_em), hora: hhmm(r.pix_pago_em), pagador: r.pix_pagador || r.cli_nome, mpId: r.mp_payment_id || '', teste: !!r.pix_teste, estornoErro: r.estorno_erro || '' };
   return b;
 }
-const SQL_AG = `select a.*, c.nome as cli_nome, c.whatsapp as cli_whats, c.endereco as cli_end, c.foto_url as cli_foto
-  from agendamentos a join clientes c on c.id = a.cliente_id`;
+const SQL_AG = `select a.*, c.nome as cli_nome, c.whatsapp as cli_whats, c.endereco as cli_end, c.foto_url as cli_foto, av.id as av_id
+  from agendamentos a join clientes c on c.id = a.cliente_id left join avaliacoes av on av.agendamento_id = a.id`;
 async function lerAgendamentos(where, params, o = {}, q = pool) {
   const rows = (await q.query(SQL_AG + ' where ' + where + ' order by a.dia, a.inicio, a.id', params)).rows;
   if (!rows.length) return [];
@@ -151,6 +151,16 @@ async function lerOcupados(q = pool) {
   return (await q.query(`select a.profissional_id as pro, a.dia, a.inicio, a.fim from agendamentos a where ${BLOQUEIA} and a.dia >= $1 and a.dia <= $2`, [hoje(), horizonte()])).rows
     .map(r => ({ pro: r.pro, day: ymd(r.dia), time: r.inicio, dur: toMin(r.fim) - toMin(r.inicio) }));
 }
+
+/* ---- avaliações (estilo Google) e PDI, no formato do app ---- */
+const TAGS_BOAS = ['Pontual', 'Caprichosa', 'Simpática', 'Ambiente limpo', 'Resultado lindo'];
+const TAGS_RUINS = ['Atrasou', 'Atendimento apressado', 'Pouca atenção', 'Resultado abaixo', 'Demorou demais'];
+const PDI_TIPOS = ['Conversa de alinhamento', 'Treinamento', 'Acompanhamento no atendimento', 'Elogio / reconhecimento'];
+async function lerAvaliacoes(dona, q = pool) {   // o público não recebe o texto escondido pela dona (a nota continua contando)
+  return (await q.query('select * from avaliacoes order by dia desc, id desc')).rows.map(a => ({ id: a.id, pro: a.profissional_id, nota: a.nota, dia: ymd(a.dia), nome: a.nome,
+    tags: a.tags || [], texto: a.oculto && !dona ? '' : a.texto, itens: (a.itens || []).map(String), oculto: a.oculto, ex: a.exemplo, bid: a.agendamento_id }));
+}
+async function lerPdi(q = pool) { return (await q.query('select * from pdi order by id')).rows.map(x => ({ id: x.id, pro: x.profissional_id, dia: ymd(x.dia), tipo: x.tipo, texto: x.texto })); }
 
 /* ============================ REGRAS DE HORÁRIO (iguais às do app) ============================ */
 // itens da sacola: "id" ou "id:opção". Devolve preço e duração DO SERVIDOR.
@@ -224,7 +234,7 @@ app.get('/health', async () => ({ ok: true, ts: Date.now() }));
 app.get('/rev', async () => ({ rev: REV }));
 app.get('/catalogo', async () => {
   const c = await lerCatalogo();
-  return { rev: REV, cats: c.cats.map(x => x.nome), services: c.services, pros: c.pros, ocupados: await lerOcupados(), hoje: hoje(), d0: d0(), pixTeste: PIX_TESTE };
+  return { rev: REV, cats: c.cats.map(x => x.nome), services: c.services, pros: c.pros, ocupados: await lerOcupados(), avaliacoes: await lerAvaliacoes(false), hoje: hoje(), d0: d0(), pixTeste: PIX_TESTE };
 });
 app.get('/horarios', async (req, reply) => {
   const q = req.query || {}, dia = String(q.dia || ''), c = await lerCatalogo();
@@ -268,6 +278,26 @@ app.post('/agendamentos', { onRequest: exigirCliente, bodyLimit: 16 * 1024 }, as
     return { ok: true, id: ag.id, booking: bookings.find(x => x.id === ag.id), bookings };
   } catch (e) { try { await cl.query('rollback'); } catch (x) {} throw e; }
   finally { cl.release(); }
+});
+
+// a cliente avalia o atendimento CONCLUÍDO, uma vez só
+app.post('/avaliacoes', { onRequest: exigirCliente, bodyLimit: 8 * 1024 }, async (req, reply) => {
+  if (!limite(req, reply, 'avaliar', 20, 10 * 60000)) return;
+  const b = req.body || {}, id = parseInt(b.agendamento_id, 10) || 0, nota = parseInt(b.nota, 10);
+  if (!(nota >= 1 && nota <= 5)) return reply.code(400).send({ error: 'nota_invalida' });
+  const ag = (await pool.query('select * from agendamentos where id = $1 and cliente_id = $2', [id, req.cli.id])).rows[0];
+  if (!ag) return reply.code(404).send({ error: 'nao_encontrado' });
+  if (ag.status !== 'concluido') return reply.code(409).send({ error: 'ainda_nao_concluido' });
+  const permitidas = nota <= 3 ? TAGS_RUINS : TAGS_BOAS;
+  const tags = (Array.isArray(b.tags) ? b.tags : []).filter(x => permitidas.includes(x)).slice(0, 5);
+  const partes = req.cli.nome.trim().split(/\s+/), nome = partes[0] + (partes.length > 1 ? ' ' + partes[partes.length - 1][0] + '.' : '');
+  const r = await pool.query(`insert into avaliacoes (agendamento_id, profissional_id, cliente_id, nome, nota, tags, texto, itens, dia)
+    values ($1,$2,$3,$4,$5,$6,$7,$8,$9) on conflict (agendamento_id) do nothing returning id`,
+    [ag.id, ag.profissional_id, req.cli.id, nome, nota, tags, txt(b.texto, 500), JSON.stringify((ag.itens || []).map(i => i.chave)), hoje()]);
+  if (!r.rows[0]) return reply.code(409).send({ error: 'ja_avaliado' });
+  await pool.query("insert into historico (agendamento_id, quem, o_que) values ($1, 'Cliente', $2)", [ag.id, 'Avaliou o atendimento: ' + nota + ' de 5']);
+  mudou();
+  return { ok: true, id: r.rows[0].id, bookings: await meus(req.cli.id), avaliacoes: await lerAvaliacoes(false) };
 });
 
 /* ============================ PIX (Mercado Pago; modo teste sem token) ============================ */
@@ -403,6 +433,16 @@ if (PIX_TESTE) {
     const p = mpTeste.pag[req.params.id]; if (!p || p.status !== 'approved') return reply.code(400).send({ message: 'pagamento nao aprovado' });
     p.status = 'refunded'; return reply.code(201).send({ id: Date.now(), payment_id: p.id, status: 'approved' });
   });
+  // apresentação: a própria cliente "paga" o Pix de mentira do pedido DELA (botão verde no app). Só existe em modo teste.
+  app.post('/pix/simular/:mp_id', { onRequest: exigirCliente, bodyLimit: 1024 }, async (req, reply) => {
+    const id = String(req.params.mp_id || '');
+    const cob = (await pool.query('select p.* from pix_cobrancas p join agendamentos a on a.id = p.agendamento_id where p.mp_id = $1 and a.cliente_id = $2 and p.teste', [id, req.cli.id])).rows[0];
+    const pg = mpTeste.pag[id];
+    if (!cob || !pg) return reply.code(404).send({ error: 'nao_encontrado' });
+    pg.status = 'approved'; pg.point_of_interaction.transaction_data.bank_info.payer.long_name = req.cli.nome + ' (teste)';
+    const r = await confirmarPagamento(id);
+    return { ok: !!r.ok, status: r.status };
+  });
   // testes automáticos: "pagar" um Pix de mentira (exige a TESTE_KEY do .env)
   app.post('/mp-teste/aprovar/:id', async (req, reply) => {
     if (!TESTE_KEY || !igual(String(req.headers['x-teste-key'] || ''), TESTE_KEY)) return reply.code(404).send({ error: 'nao_encontrado' });
@@ -460,7 +500,7 @@ async function estadoAdmin() {
     .map(l => ({ id: l.id, bid: l.agendamento_id, forma: l.forma, valor: reais(l.valor_centavos), nome: l.nome, itens: (l.ag_itens || l.itens || []).map(i => i.chave || String(i)), at: hhmm(l.aprovado_em), day: ymd(l.dia), ex: !!l.exemplo }));
   const caixas = {};
   (await pool.query('select * from caixas where dia >= $1', [desde])).rows.forEach(x => { caixas[ymd(x.dia)] = { at: hhmm(x.fechado_em), total: reais(x.total) }; });
-  return { rev: REV, hoje: hoje(), bookings, lanc, caixas, cats: c.cats.map(x => x.nome), services: c.services, pros: c.pros, pixTeste: PIX_TESTE };
+  return { rev: REV, hoje: hoje(), bookings, lanc, caixas, cats: c.cats.map(x => x.nome), services: c.services, pros: c.pros, avaliacoes: await lerAvaliacoes(true), pdi: await lerPdi(), pixTeste: PIX_TESTE };
 }
 app.get('/admin/estado', { onRequest: exigirAdmin }, async () => estadoAdmin());
 app.get('/admin/pedidos', { onRequest: exigirAdmin }, async req => {
@@ -513,6 +553,25 @@ app.post('/admin/agendamentos/:id/reprovar', { onRequest: exigirAdmin, bodyLimit
     await cl.query("insert into historico (agendamento_id, quem, o_que) values ($1, 'Dona', $2)", [ag.id, 'Reprovou: ' + motivo]);
     if (ag.pix_pago_em && !ag.estornado_em && ag.mp_payment_id) return { depois: () => estornar(ag.id, ag.mp_payment_id, '', true) };
   });
+});
+// a dona marca o atendimento como concluído: a cliente recebe o convite para avaliar quando abrir o app
+app.post('/admin/agendamentos/:id/concluir', { onRequest: exigirAdmin, bodyLimit: 1024 }, async (req, reply) => mudarStatus(req, reply, async (cl, ag) => {
+  if (ag.status !== 'aprovado') return { erro: 'nao_esta_confirmado' };
+  await cl.query("update agendamentos set status = 'concluido', concluido_em = now(), concluido_por = 'Dona', atualizado_em = now() where id = $1", [ag.id]);
+  await cl.query("insert into historico (agendamento_id, quem, o_que) values ($1, 'Dona', 'Concluiu o atendimento')", [ag.id]);
+}));
+app.put('/admin/avaliacoes/:id', { onRequest: exigirAdmin, bodyLimit: 1024 }, async (req, reply) => {
+  const oculto = !!(req.body || {}).oculto;
+  const r = await pool.query('update avaliacoes set oculto = $2 where id = $1', [parseInt(req.params.id, 10) || 0, oculto]);
+  if (!r.rowCount) return reply.code(404).send({ error: 'nao_encontrado' });
+  mudou(); return estadoAdmin();
+});
+app.post('/admin/pdi', { onRequest: exigirAdmin, bodyLimit: 8 * 1024 }, async (req, reply) => {
+  const b = req.body || {};
+  if (!PDI_TIPOS.includes(b.tipo)) return reply.code(400).send({ error: 'tipo_invalido' });
+  if (!(await pool.query('select 1 from profissionais where id = $1', [String(b.pro || '')])).rows[0]) return reply.code(404).send({ error: 'nao_encontrado' });
+  await pool.query('insert into pdi (profissional_id, dia, tipo, texto) values ($1,$2,$3,$4)', [String(b.pro), hoje(), b.tipo, txt(b.texto, 800)]);
+  mudou(); return estadoAdmin();
 });
 app.post('/admin/caixa/fechar', { onRequest: exigirAdmin, bodyLimit: 1024 }, async (req, reply) => {
   const dia = String((req.body || {}).dia || (req.query || {}).dia || hoje());

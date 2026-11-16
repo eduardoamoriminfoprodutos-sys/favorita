@@ -109,7 +109,7 @@ function vPix() {
   const qr = P && P.qr_base64 ? `<img src="data:image/png;base64,${P.qr_base64}" alt="QR Code do Pix" style="width:100%;height:100%;image-rendering:pixelated">` : `<canvas id="qr" width="29" height="29" aria-label="QR Code do Pix${DADOS.servidor ? " (teste)" : " (exemplo)"}"></canvas>`;
   const rodape = !DADOS.servidor
     ? `<div class="card sec flat"><p class="meta">Protótipo: no sistema de verdade o Mercado Pago avisa o servidor quando o Pix cai e esta tela muda sozinha. Aqui, simule:</p><button class="btn full" style="background:var(--ok)" type="button" id="simular-pix">Simular Pix pago</button></div>`
-    : P && P.teste ? `<div class="card sec flat"><p class="meta"><b>Pix de teste.</b> O salão está em período de testes: nenhum dinheiro é cobrado por este código. Quando o pagamento for confirmado, esta tela muda sozinha.</p></div>`
+    : P && P.teste ? `<div class="card sec flat"><p class="meta"><b>Pix de teste.</b> O salão está em período de testes: nenhum dinheiro é cobrado por este código. Para ver o que acontece depois do pagamento, simule:</p><button class="btn full" style="background:var(--ok)" type="button" id="simular-pix">Simular pagamento Pix</button></div>`
     : `<div class="card sec flat"><p class="meta">Assim que o Pix cair, esta tela muda sozinha e o seu pedido vai para o salão. Se não aprovarem, o Pix volta para você.</p></div>`;
   return `<section class="view">
     ${navBack('data-tab="meus"', "Pagamento Pix")}
@@ -131,9 +131,39 @@ function acompanharPix() {
     if (S.view !== "pix" || !S.pix) { clearInterval(pixTimer); return; }
     try {
       const st = await DADOS.statusPix();
-      if (st === "approved") { clearInterval(pixTimer); toast("Pix confirmado! Pedido enviado ao salão."); go("meus"); }
+      if (st === "approved") { clearInterval(pixTimer); toast("Pix confirmado! Pedido enviado ao salão."); S.acompId = S.pix.bid; go("acomp"); }
     } catch (_) { /* sem internet agora: tenta de novo */ }
   }, 4000);
+}
+/* acompanhamento do pedido (como no delivery): muda sozinha quando o salão responde */
+function vAcomp() {
+  const b = bk(S.acompId);
+  if (!b) return `<section class="view">${navBack('data-tab="meus"', "Seu agendamento")}<div class="empty">Pedido não encontrado.</div></section>`;
+  const d = dOf(b.day), p = pro(b.pro), fim = toHM(toMin(b.time) + mins(b.itens)), st = b.status;
+  const passo = (ok, cur, n, txt) => `<span class="st ${ok ? "done" : cur ? "cur" : ""}"><i>${ok ? "✓" : n}</i>${txt}</span>`;
+  const pago = b.pay !== "pix" || b.paid, conf = st === "aprovado" || st === "concluido";
+  const passos = `<div class="steps">${passo(true, false, 1, "Pedido")}<hr class="done">${passo(pago, !pago, 2, b.pay === "pix" ? "Pix" : "No salão")}<hr class="${pago ? "done" : ""}">${passo(conf, pago && !conf && st !== "reprovado", 3, "Confirmado")}</div>`;
+  const topo = st === "aguardando"
+    ? `<div class="card sec" style="align-items:center;text-align:center;gap:12px"><span class="anyico" style="width:56px;height:56px;font-size:20px">✦</span>
+        <div><h2>O salão está conferindo a agenda</h2><p class="meta" style="margin-top:6px">Seu pedido chegou${b.pay === "pix" ? " e o Pix foi confirmado" : ""}. Estamos aguardando o salão confirmar o seu horário. Esta tela muda sozinha.</p></div>
+        <div class="waiting"><span class="spin"></span>Aguardando a confirmação do salão</div></div>`
+    : conf
+    ? `<div class="status-box ok" style="text-align:center;padding:18px"><div style="font-size:26px;line-height:1">✓</div><div style="font-size:17px;margin-top:6px">${st === "concluido" ? "Atendimento concluído" : "Agendamento confirmado!"}</div><div style="font-weight:500;margin-top:4px">${st === "concluido" ? "Obrigada pela visita." : "Te esperamos " + WD[d.getDay()].toLowerCase() + ", " + d.getDate() + " de " + MES[d.getMonth()] + ", às " + b.time + "."}</div></div>`
+    : st === "reprovado"
+    ? `<div class="why"><i>!</i><span><b>O salão não pôde confirmar: ${esc(b.motivo || "horário indisponível")}.</b> ${b.refund ? "Seu Pix de " + fmt(sum(b.itens)) + " foi devolvido." : "Escolha outro horário, sem custo."}</span></div>`
+    : `<div class="card sec" style="align-items:center;text-align:center;gap:10px"><h2>Falta pagar o Pix</h2><p class="meta">O pedido só vai para o salão depois do pagamento.</p><button class="btn full" type="button" data-pagar="${b.id}">Pagar Pix</button></div>`;
+  return `<section class="view">
+    ${navBack('data-tab="meus"', "Seu agendamento")}
+    ${passos}
+    ${topo}
+    <div class="card rcard"><div class="rhead"><span class="dblock"><small>${WD[d.getDay()]}</small><b>${d.getDate()}</b></span><span class="hh"><b>${b.time} às ${fim}</b><span>com ${esc(p.nome)} · ${MES[d.getMonth()]}</span></span></div>
+      <div class="rbody">${b.itens.map(k => { const I = it(k); return `<div class="kv"><span>${esc(I.base)}${I.op ? ` <span class="muted">· ${esc(I.op)}</span>` : ""}</span><span>${fmt(I.preco)}</span></div>`; }).join("")}
+        <div class="kv total"><span>Total</span><span>${fmt(sum(b.itens))}</span></div>
+        <div class="kv dim"><span>Pagamento</span><span>${payText(b)}</span></div></div></div>
+    ${conf && st === "aprovado" ? `<div class="acts" style="border:0;padding:0"><a class="btn ghost" href="${SALAO.mapa}" target="_blank" rel="noopener">Como chegar</a>${FONE_SALAO ? `<a class="btn ghost" href="${waSalao()}" target="_blank" rel="noopener">Falar no WhatsApp</a>` : ""}</div>` : ""}
+    ${st === "reprovado" ? `<button class="btn-gold" type="button" data-go="agendar" data-refaz="${b.id}"><span style="width:17px;height:17px;display:inline-grid">${IC.cal}</span>Escolher outro horário</button>` : ""}
+    <button class="btn ghost full" type="button" data-tab="meus">Ver meus horários</button>
+  </section>`;
 }
 function vMeus() {
   const mine = S.bookings.filter(b => b.mine);
@@ -155,7 +185,7 @@ function vMeus() {
         ${off ? `<div class="why"><i>!</i><span><b>${esc(b.motivo || "Não aprovado")}.</b> ${b.refund ? "Seu Pix de " + fmt(sum(b.itens)) + " foi devolvido." : "Escolha outro, sem custo."}</span></div>
           <button class="btn-gold" type="button" data-go="agendar" data-refaz="${b.id}"><span style="width:17px;height:17px;display:inline-grid">${IC.cal}</span>Escolher outro horário</button>` : ""}
         ${b.status === "pix" ? `<button class="btn full" type="button" data-pagar="${b.id}">Pagar Pix</button>` : ""}
-        ${b.status === "aguardando" ? `<p class="meta">O salão vai conferir a agenda e responder por aqui.</p>` : ""}
+        ${b.status === "aguardando" ? `<div class="row"><p class="meta">O salão vai conferir a agenda e responder por aqui.</p><button class="link" type="button" data-acomp="${b.id}">Acompanhar</button></div>` : ""}
       </article>`;
     }).join("") : `<div class="empty">${S.meusTab === "prox" ? "Você ainda não tem horários marcados." : "Seus atendimentos já feitos aparecem aqui."}<button class="btn" type="button" data-tab="catalogo">Agendar agora</button></div>`}
   </section>`;
@@ -208,10 +238,10 @@ function readPerfilFields() {
 /* ===== registro no motor ===== */
 APP.telas.cliente = () => {
   const v = S.view;
-  const pend = !S.sheet && ["catalogo", "meus", "perfil"].includes(v) ? avaliacaoPendente() : null;
+  const pend = !S.sheet && ["catalogo", "meus", "perfil", "acomp"].includes(v) ? avaliacaoPendente() : null;
   if (pend) { S.avDraft = { bid: pend.id, nota: 0, tags: [], texto: "", popup: true }; S.sheet = { t: "avaliar" }; }
-  const html = { catalogo: vCatalogo, agendar: vAgendar, pagar: vPagar, pix: vPix, meus: vMeus, perfil: vPerfil }[v]();
-  const nav = tabs([["catalogo", "Serviços", "bag"], ["meus", "Horários", "cal"], ["perfil", "Perfil", "user"]], ["meus", "perfil"].includes(v) ? v : "catalogo");
+  const html = { catalogo: vCatalogo, agendar: vAgendar, pagar: vPagar, pix: vPix, meus: vMeus, perfil: vPerfil, acomp: vAcomp }[v]();
+  const nav = tabs([["catalogo", "Serviços", "bag"], ["meus", "Horários", "cal"], ["perfil", "Perfil", "user"]], v === "acomp" ? "meus" : ["meus", "perfil"].includes(v) ? v : "catalogo");
   if (v === "agendar") return { html, bottom: bAgendar() };
   if (v === "pagar") return { html, bottom: bPagar() };
   if (v === "pix") return { html, bottom: nav, depois: drawQR };
@@ -235,6 +265,11 @@ APP.cliques.push((t, d, e) => {
   if (d.avaliar) { S.avDraft = { bid: +d.avaliar, nota: 0, tags: [], texto: "" }; S.sheet = { t: "avaliar" }; render(); return true; }
   if (d.nota) { const n = +d.nota; if ((n <= 3) !== ((S.avDraft.nota || 5) <= 3)) S.avDraft.tags = []; S.avDraft.nota = n; render(); return true; }
   if (d.avtag) { const g = S.avDraft.tags; S.avDraft.tags = g.includes(d.avtag) ? g.filter(x => x !== d.avtag) : [...g, d.avtag]; render(); return true; }
+  if (t.id === "av-enviar" && DADOS.servidor) {
+    const a = S.avDraft;
+    fazer(() => DADOS.avaliar({ agendamento_id: a.bid, nota: a.nota, tags: a.tags, texto: (a.texto || "").trim() }), () => { S.sheet = null; S.avDraft = null; toast("Obrigada! Sua avaliação foi enviada."); });
+    return true;
+  }
   if (t.id === "av-enviar") {
     const a = S.avDraft, b = bk(a.bid), P = S.perfil, partes = (P.nome || b.nome).trim().split(/\s+/);
     const nome = partes[0] + (partes.length > 1 ? " " + partes[partes.length - 1][0] + "." : "");
@@ -276,7 +311,7 @@ APP.cliques.push((t, d, e) => {
         if (b.pay === "pix") { try { await DADOS.criarPix(b.id); } catch (_) { semPix = true; } }
         return b;
       }, b => {
-        if (b.pay !== "pix") { toast("Pedido enviado! Aguarde a aprovação do salão."); go("meus"); }
+        if (b.pay !== "pix") { toast("Pedido enviado! Aguarde a aprovação do salão."); S.acompId = b.id; go("acomp"); }
         else if (semPix) { toast(DADOS.msgErro("falha_pix") + " Use o botão Pagar Pix em Meus horários."); go("meus"); }
         else { go("pix"); acompanharPix(); }
       });
@@ -284,7 +319,7 @@ APP.cliques.push((t, d, e) => {
     }
     const b = { id: ++seq, nome: P.nome, fone: P.fone, end: P.end, foto: P.foto, itens: [...S.cart], pro: quemNoHorario(), day: S.day, time: S.time, obs: S.obs, pay: S.pay, payIn: S.payIn, paid: false, status: S.pay === "pix" ? "pix" : "aguardando", mine: true, hist: [[hhmm(), "Cliente", "Pedido criado"]] };
     S.bookings.push(b); S.cart = []; S.time = null; S.obs = ""; S.meusTab = "prox";
-    if (b.pay === "pix") { S.pixFor = b.id; go("pix"); } else { toast("Pedido enviado! Aguarde a aprovação do salão."); go("meus"); }
+    if (b.pay === "pix") { S.pixFor = b.id; go("pix"); } else { toast("Pedido enviado! Aguarde a aprovação do salão."); S.acompId = b.id; go("acomp"); }
     return true;
   }
   if (d.pagar) {
@@ -297,7 +332,13 @@ APP.cliques.push((t, d, e) => {
     try { navigator.clipboard.writeText(el.textContent).then(() => toast("Código Pix copiado."), sel); } catch (_) { sel(); }
     return true;
   }
-  if (t.id === "simular-pix" && !DADOS.servidor) { const b = bk(S.pixFor); b.paid = true; b.status = "aguardando"; b.hist.push([hhmm(), "Sistema", "Pix confirmado pelo Mercado Pago"]); toast("Pix confirmado! Pedido enviado ao salão."); go("meus"); return true; }
+  if (t.id === "simular-pix" && DADOS.servidor) {
+    clearInterval(pixTimer);
+    fazer(() => DADOS.simularPix(), st => { if (st === "approved") { toast("Pix confirmado! Pedido enviado ao salão."); S.acompId = S.pix.bid; go("acomp"); } else acompanharPix(); });
+    return true;
+  }
+  if (d.acomp) { S.acompId = +d.acomp; go("acomp"); return true; }
+  if (t.id === "simular-pix" && !DADOS.servidor) { const b = bk(S.pixFor); b.paid = true; b.status = "aguardando"; b.hist.push([hhmm(), "Sistema", "Pix confirmado pelo Mercado Pago"]); toast("Pix confirmado! Pedido enviado ao salão."); S.acompId = b.id; go("acomp"); return true; }
   if (d.meus) { S.meusTab = d.meus; render(); return true; }
   if (t.id === "trocar-foto") { readPerfilFields(); document.getElementById("foto-input").click(); return true; }
   if (t.id === "salvar-perfil") {

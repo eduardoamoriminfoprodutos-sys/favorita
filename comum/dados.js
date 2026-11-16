@@ -64,7 +64,10 @@ const ERROS = {
   caixa_ja_fechado: "O caixa desse dia já foi fechado.",
   sem_lancamentos: "Não há lançamentos nesse dia.",
   foto_invalida: "Essa foto não pôde ser usada. Tente outra.",
-  login_necessario: "Entre de novo para continuar."
+  login_necessario: "Entre de novo para continuar.",
+  ja_avaliado: "Esse atendimento já foi avaliado.",
+  ainda_nao_concluido: "Esse atendimento ainda não foi concluído pelo salão.",
+  nao_esta_confirmado: "Só dá para concluir um atendimento confirmado."
 };
 const msgErro = e => ERROS[e] || "Não deu certo agora. Tente de novo.";
 let TOKEN = SERVIDOR ? guarda.ler(CHAVE_TOKEN) : null;
@@ -85,11 +88,13 @@ function ocupadosComoAgenda(lista) {   /* horários ocupados de outras clientes,
 function aplicarCatalogo(c) {
   CATS = c.cats; SERVICES.splice(0, SERVICES.length, ...c.services); PROS.splice(0, PROS.length, ...c.pros);
   S.pixTeste = !!c.pixTeste;
+  if (c.avaliacoes) S.avaliacoes = c.avaliacoes;   /* nota e comentários das profissionais (o texto escondido pela dona não vem) */
 }
 let MEUS = [], OCUP = [];
-function montarCliente() { S.bookings = MEUS.concat(ocupadosComoAgenda(OCUP)); }
+let ADIADAS = [];   /* atendimentos em que a cliente tocou "Agora não" no convite para avaliar (só neste aparelho) */
+function montarCliente() { MEUS.forEach(b => { if (ADIADAS.includes(b.id)) b.avAdiada = true; }); S.bookings = MEUS.concat(ocupadosComoAgenda(OCUP)); }
 function aplicarEstado(e) {   /* painel da dona */
-  aplicarCatalogo(e); S.bookings = e.bookings; S.lanc = e.lanc; S.caixas = e.caixas || {};
+  aplicarCatalogo(e); S.bookings = e.bookings; S.lanc = e.lanc; S.caixas = e.caixas || {}; S.pdi = e.pdi || [];
 }
 let REV_VISTO = 0, pronto = false;
 async function recarregar() {
@@ -139,10 +144,18 @@ const DADOS = {
     const r = await api("PUT", "/clientes/eu", { nome: S.perfil.nome, end: S.perfil.end, foto: S.perfil.foto });
     Object.assign(S.perfil, { nome: r.perfil.nome, end: r.perfil.end, foto: r.perfil.foto }); return true;
   },
+  async avaliar(dados) {   /* a cliente avalia o atendimento concluído */
+    const r = await api("POST", "/avaliacoes", dados);
+    MEUS = r.bookings; S.avaliacoes = r.avaliacoes; montarCliente(); return r;
+  },
   async criarPix(bid) {
     const r = await api("POST", "/pix/criar", { agendamento_id: bid });
     S.pix = Object.assign({ bid }, r); S.pixFor = bid;
     return r;
+  },
+  async simularPix() {   /* só no modo teste: a cliente "paga" o Pix de mentira (apresentação) */
+    await api("POST", "/pix/simular/" + S.pix.mp_id);
+    return DADOS.statusPix();
   },
   async statusPix() {
     if (!S.pix) return null;
@@ -174,12 +187,13 @@ async function fazer(acao, ok) {
 function salvar() {
   if (!SERVIDOR) return salvarDemo();
   if (MODO !== "cliente") return;
-  const d = JSON.stringify({ perfil: S.perfil, cart: S.cart, pay: S.pay, payIn: S.payIn });
+  S.bookings.forEach(b => { if (b.mine && b.avAdiada && !ADIADAS.includes(b.id)) ADIADAS.push(b.id); });
+  const d = JSON.stringify({ perfil: S.perfil, cart: S.cart, pay: S.pay, payIn: S.payIn, adiadas: ADIADAS.slice(-50) });
   if (d !== ultimoSalvo) { guarda.por(CHAVE_LOCAL, d); ultimoSalvo = d; }
 }
 function carregar() {
   if (!SERVIDOR) return carregarDemo();
-  try { const d = JSON.parse(guarda.ler(CHAVE_LOCAL) || "null"); if (d) { S.perfil = Object.assign(S.perfil, d.perfil || {}); S.cart = d.cart || []; S.pay = d.pay || S.pay; S.payIn = d.payIn || S.payIn; } } catch (_) {}
+  try { const d = JSON.parse(guarda.ler(CHAVE_LOCAL) || "null"); if (d) { S.perfil = Object.assign(S.perfil, d.perfil || {}); S.cart = d.cart || []; S.pay = d.pay || S.pay; S.payIn = d.payIn || S.payIn; ADIADAS = Array.isArray(d.adiadas) ? d.adiadas : []; } } catch (_) {}
   return true;
 }
 window.addEventListener("storage", e => {

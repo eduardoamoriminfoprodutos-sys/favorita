@@ -80,6 +80,7 @@ let D1 = addDias(D0, 1); if (semana(D1) === 0) D1 = addDias(D1, 1);
       for (const [forma, v, nome, its] of [['cartao', 80, 'Paula Reis', ['1']], ['dinheiro', 65, 'Juliana Alves', ['9', '10']], ['cartao', 45, 'Renata Lima', ['9']], ['dinheiro', 25, 'Carol Mendes', ['6']]])
         await c.query('insert into lancamentos (forma, valor_centavos, dia, nome, itens, exemplo) values ($1,$2,$3,$4,$5,true)', [forma, v * 100, HOJE, nome, JSON.stringify(its.map(k => ({ chave: k })))]);
       console.log('exemplos: 4 pedidos (2 para aprovar, 2 confirmados) e 4 lançamentos de hoje, todos marcados como exemplo');
+      console.log('avaliações de exemplo:', await require('./migra-avaliacoes').inserirExemplos(c));
     }
     await c.query('commit');
   } catch (e) { try { await c.query('rollback'); } catch (x) {} console.error('ERRO, nada gravado:', e.message); process.exitCode = 1; }

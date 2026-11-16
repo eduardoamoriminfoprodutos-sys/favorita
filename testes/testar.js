@@ -33,7 +33,7 @@ const { chromium } = require('playwright');
   await p.click('[data-payin="dinheiro"]'); await p.click('[data-pay="pix"]');
   ok((await p.textContent('#enviar')).includes('Pagar R$ 270,00 com Pix'), 'CTA do Pix com valor');
   await p.click('#enviar'); ok(!!(await p.$('#simular-pix')), 'abre a tela do Pix');
-  await p.click('#simular-pix'); ok((await p.textContent('#root')).includes('Aguardando salão'), 'Meus horários: aguardando salão');
+  await p.click('#simular-pix'); ok((await p.textContent('#root')).includes('Aguardando a confirmação do salão'), 'depois do Pix: tela de acompanhamento aguardando o salão');
   // perfil com foto
   await p.click('[data-tab="perfil"]'); await p.setInputFiles('#foto-input', FOTO); await p.waitForTimeout(400);
   ok(await p.inputValue('#p-nome') === 'Elika de Brito', 'perfil mantém nome após foto');

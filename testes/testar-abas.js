@@ -46,7 +46,8 @@ const { chromium } = require('playwright');
   ok(await escolherHorario(cli), 'achou horário livre');
   await cli.click('#go-pagar'); await cli.fill('#f-nome', 'Cliente Teste'); await cli.fill('#f-fone', '(94) 98888-0099');
   await cli.click('[data-pay="salao"]'); await cli.click('#enviar');
-  ok(await ate(cli, () => S.view === 'meus' && S.bookings.some(b => b.mine && b.status === 'aguardando')), 'pedido enviado e aparece em Meus horários');
+  ok(await ate(cli, () => S.view === 'acomp' && S.bookings.some(b => b.mine && b.status === 'aguardando') && document.getElementById('root').textContent.includes('Aguardando a confirmação do salão')), 'pedido enviado: tela de acompanhamento "aguardando a confirmação do salão"');
+  await cli.screenshot({ path: OUT + '/acompanhar-aguardando.png', fullPage: true });
   const id = await cli.evaluate(() => Math.max(...S.bookings.filter(b => b.mine).map(b => b.id)));
   const chegou = await ate(sal, `S.bookings.some(b => b.id === ${id}) && !!document.querySelector('[data-apr="${id}"]')`);
   ok(chegou, `pedido da cliente chegou no painel sem recarregar (${antes} → ${await sal.evaluate(() => S.bookings.filter(b => b.status === 'aguardando').length)})`);
@@ -54,22 +55,41 @@ const { chromium } = require('playwright');
   // salão aprova e a cliente vê sozinha
   await sal.click(`[data-apr="${id}"]`);
   ok(await ate(sal, `S.lanc.some(l => l.bid === ${id})`), 'aprovar cria o lançamento no Financeiro');
+  ok(await ate(cli, () => S.view === 'acomp' && document.getElementById('root').textContent.includes('Agendamento confirmado')), 'a tela de acompanhamento muda sozinha para "Agendamento confirmado"');
+  await cli.screenshot({ path: OUT + '/acompanhar-confirmado.png', fullPage: true });
   await cli.click('[data-tab="meus"]');
   ok(await ate(cli, () => document.getElementById('root').textContent.includes('Confirmado')), 'cliente vê o pedido confirmado sem recarregar');
   await cli.reload(); await cli.waitForTimeout(1500); await cli.click('[data-tab="meus"]');
   ok(await ate(cli, () => document.getElementById('root').textContent.includes('Confirmado'), 8000), 'dados continuam depois de recarregar (estão no servidor)');
 
+  // avaliações de exemplo e "concluir atendimento" -> convite para avaliar na volta da cliente
+  ok(await cli.evaluate(() => nota1(media(avalDe('ana')))) === '4,8', 'Ana aparece com nota 4,8 no app da cliente: ' + await cli.evaluate(() => nota1(media(avalDe('ana')))));
+  ok(await sal.evaluate(() => PROS.some(p => desempenho(p).alerta)), 'painel mostra o alerta de atenção (profissional com avaliações ruins)');
+  await sal.evaluate(id => { S.detail = id; render(); }, id);
+  ok(!!(await sal.$(`[data-concluir="${id}"]`)), 'resumo do pedido confirmado tem "Concluir atendimento"');
+  await sal.click(`[data-concluir="${id}"]`);
+  ok(await ate(sal, `S.bookings.some(b => b.id === ${id} && b.status === 'concluido')`), 'dona concluiu o atendimento');
+  await sal.evaluate(() => { S.detail = null; render(); });
+  ok(await ate(cli, () => !!document.getElementById('av-enviar') && document.querySelector('.sheet').textContent.includes('Como foi com')), 'cliente recebe sozinha o convite para avaliar');
+  await cli.screenshot({ path: OUT + '/avaliar.png' });
+  await cli.click('[data-nota="5"]'); await cli.click('[data-avtag="Caprichosa"]'); await cli.fill('#av-texto', 'Atendimento de teste: tudo ótimo.');
+  await cli.click('#av-enviar');
+  ok(await ate(cli, `S.bookings.some(b => b.id === ${id} && b.avaliacao)`), 'avaliação enviada e gravada no servidor');
+  ok(await ate(sal, () => S.avaliacoes.some(a => a.texto === 'Atendimento de teste: tudo ótimo.')), 'a avaliação chega no painel da dona');
+  await cli.reload(); await cli.waitForTimeout(2000);
+  ok(!(await cli.$('#av-enviar')), 'depois de avaliar, o convite não aparece de novo');
+
   // Pix (modo teste): paga, chega para a dona com comprovante, dona reprova e o Pix volta
   await cli.click('[data-tab="catalogo"]'); await cli.click('[data-cat="Cabelo"]'); await cli.click('[data-svc="2"]'); await cli.click('#go-agendar');
   await escolherHorario(cli); await cli.click('#go-pagar'); await cli.click('[data-pay="pix"]'); await cli.click('#enviar');
   ok(await ate(cli, () => S.view === 'pix' && !!S.pix && document.getElementById('pix-code').textContent.length > 10), 'tela do Pix com o código gerado pelo servidor');
-  ok(!(await cli.$('#simular-pix')), 'sem o botão "Simular Pix pago"');
   await cli.screenshot({ path: OUT + '/pix.png', fullPage: true });
-  if (API && TESTE_KEY) {
-    const mp = await cli.evaluate(() => S.pix.mp_id), pid = await cli.evaluate(() => S.pix.bid);
-    const r = await fetch(API.replace(/\/$/, '') + '/mp-teste/aprovar/' + mp, { method: 'POST', headers: { 'x-teste-key': TESTE_KEY } });
-    ok(r.ok, 'Pix de teste pago (sem dinheiro de verdade)');
-    ok(await ate(cli, `S.view === 'meus' && S.bookings.some(b => b.id === ${pid} && b.status === 'aguardando')`, 15000), 'a tela do Pix muda sozinha e o pedido vai para o salão');
+  const pixTeste = await cli.evaluate(() => !!(S.pix && S.pix.teste));
+  ok(pixTeste ? !!(await cli.$('#simular-pix')) : !(await cli.$('#simular-pix')), pixTeste ? 'Pix em modo teste: botão verde "Simular pagamento Pix"' : 'Pix de verdade: sem botão de simular');
+  if (pixTeste) {
+    const pid = await cli.evaluate(() => S.pix.bid);
+    await cli.click('#simular-pix');
+    ok(await ate(cli, `S.view === 'acomp' && S.bookings.some(b => b.id === ${pid} && b.status === 'aguardando' && b.paid)`, 15000), 'simular o Pix: pago e a tela vai para "aguardando a confirmação do salão"');
     ok(await ate(sal, `S.bookings.some(b => b.id === ${pid} && b.paid) && !!document.querySelector('[data-open="${pid}"]')`), 'pedido pago aparece para a dona como Pix pago');
     await sal.click(`[data-open="${pid}"]`); ok(await ate(sal, () => !!document.querySelector('.receipt-thumb')), 'resumo do pedido com o comprovante do Pix');
     await sal.click(`[data-zoom="${pid}"]`); ok(!!(await sal.$('.lightbox')), 'zoom do comprovante'); await sal.screenshot({ path: OUT + '/comprovante.png' }); await sal.click('[data-zclose="1"]');
@@ -78,7 +98,7 @@ const { chromium } = require('playwright');
     await sal.click('[data-fechar="1"]');
     await cli.click('[data-tab="meus"]');
     ok(await ate(cli, () => document.getElementById('root').textContent.includes('foi devolvido')), 'cliente vê "Não aprovado" e o Pix devolvido');
-  } else console.log('-     Pix: pagamento de teste não conferido (defina API e TESTE_KEY)');
+  } else console.log('-     Pix de verdade: pagamento não simulado');
   for (const p of [capa, cli, sal]) ok(await p.evaluate(() => document.documentElement.scrollWidth) <= 390, 'sem rolagem lateral em ' + p.url());
   console.log('erros:', errs);
   await b.close();

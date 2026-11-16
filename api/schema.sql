@@ -124,3 +124,30 @@ create table if not exists pix_cobrancas (
   criado_em timestamptz not null default now(),
   pago_em timestamptz
 );
+-- avaliações das clientes (uma por atendimento concluído) e acompanhamento das profissionais (PDI)
+alter table agendamentos add column if not exists concluido_em timestamptz;
+alter table agendamentos add column if not exists concluido_por text;
+create table if not exists avaliacoes (
+  id serial primary key,
+  agendamento_id int unique references agendamentos(id),
+  profissional_id text not null references profissionais(id),
+  cliente_id int references clientes(id),
+  nome text not null,                          -- como aparece no app: primeiro nome + inicial ("Juliana A.")
+  nota int not null check (nota between 1 and 5),
+  tags text[] not null default '{}',
+  texto text not null default '',
+  itens jsonb not null default '[]',           -- chaves dos serviços ("4:1")
+  oculto boolean not null default false,       -- a dona esconde o TEXTO do app; a nota continua contando
+  exemplo boolean not null default false,
+  dia date not null,
+  criado_em timestamptz not null default now()
+);
+create index if not exists avaliacoes_prof on avaliacoes (profissional_id);
+create table if not exists pdi (
+  id serial primary key,
+  profissional_id text not null references profissionais(id),
+  dia date not null,
+  tipo text not null,
+  texto text not null default '',
+  criado_em timestamptz not null default now()
+);
