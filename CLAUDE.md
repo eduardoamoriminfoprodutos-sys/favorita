@@ -9,7 +9,7 @@ Sistema de agendamento para salões (app da cliente + painel do salão), hoje co
 ## Regras
 
 - **HTML, CSS e JavaScript puro, sem build.** Não introduza framework, bundler nem dependência no app. Tem que continuar abrindo direto no GitHub Pages.
-- **A marca mora só em `marca.js` + `logo.png`.** Nunca escreva o nome "Favorita", a cor ou o contato do salão dentro de `app/`. Use `MARCA.nome`, `MARCA.nomeCompleto`, `MARCA.logo`, `MARCA.salao` e as variáveis de cor do CSS.
+- **A marca mora só em `marca.js` + `logo.png`.** Nunca escreva o nome "Favorita", a cor ou o contato do salão dentro de `cliente/`, `salao/` ou `comum/`. Use `MARCA.nome`, `MARCA.nomeCompleto`, `MARCA.logo`, `MARCA.salao` e as variáveis de cor do CSS.
 - **Cores só por variável** (`--gold`, `--ink`, `--bg` e as outras em `comum/estilos.css`). Componente novo usa as variáveis, nunca cor solta, para a troca de marca continuar funcionando.
 - **Visual segue o redesign do Claude Design** (`redesign-claude-design/` e o README dentro do zip): fundo bege, cards brancos com sombra suave, ink para seleção, dourado para destaque, só Montserrat.
 - **Dados de exemplo ficam marcados como exemplo** (selo "Exemplo"/"Ex.").
