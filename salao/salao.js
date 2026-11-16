@@ -181,14 +181,52 @@ function vCats() {
     <div class="card row" style="padding:10px 12px"><input type="text" id="cat-nova" placeholder="Nova categoria (ex.: Depilação)" style="flex:1"><button class="btn" type="button" id="cat-add">Adicionar</button></div>
   </section>`;
 }
+/* alerta de atenção: avaliações ruins recentes (últimos 30 dias) */
+function desempenho(p) {
+  const l = avalDe(p.id), rec = l.filter(a => diasAtras(a.dia) <= 30), ant = l.filter(a => diasAtras(a.dia) > 30);
+  const neg = rec.filter(a => a.nota <= 2).length;
+  return { l, rec, ant, neg, m: media(l), m30: media(rec), mAnt: media(ant), alerta: neg >= 2 || (rec.length >= 3 && media(rec) < 3.5) };
+}
 function vEquipe() {
+  const atencao = PROS.filter(p => desempenho(p).alerta);
   return `<section class="view">
     <div class="row pad-x" style="margin-top:12px;align-items:baseline"><h1>Equipe</h1><span class="meta">${PROS.length} profissionais</span></div>
-    <p class="meta pad-x">Cada uma só recebe os serviços da especialidade dela, dentro do horário dela. Toque para editar.</p>
+    <p class="meta pad-x">Toque numa profissional para ver as avaliações das clientes, o desempenho e o acompanhamento (PDI).</p>
+    ${atencao.map(p => { const D = desempenho(p); return `<button class="alerta" type="button" data-proview="${p.id}"><i>!</i><span><b>Atenção com ${esc(p.nome)}</b>${D.neg} ${D.neg === 1 ? "avaliação ruim" : "avaliações ruins"} nos últimos 30 dias · nota recente ${nota1(D.m30)}</span><em>Ver →</em></button>`; }).join("")}
     <button class="btn full" type="button" data-proedit="novo">+ Adicionar profissional</button>
-    ${PROS.length ? `<div class="tgrid">${PROS.map(p => { const n = S.bookings.filter(b => b.pro === p.id && b.status === "aprovado" && b.day === HOJE).length;
-      return `<button class="card tcard" type="button" data-proedit="${p.id}">${ava(p.foto, p.nome, "lg")}<b><span class="dot" style="background:${p.cor};margin-right:6px"></span>${esc(p.nome)}</b><small>${esc(p.faz || p.cats.join(", "))}</small><span class="meta" style="color:var(--gold);font-weight:600">${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h · ${n} hoje</span></button>`; }).join("")}</div>`
+    ${PROS.length ? `<div class="tgrid">${PROS.map(p => { const n = S.bookings.filter(b => b.pro === p.id && b.status === "aprovado" && b.day === HOJE).length, D = desempenho(p);
+      return `<button class="card tcard ${D.alerta ? "warn" : ""}" type="button" data-proview="${p.id}">${D.alerta ? `<span class="tflag">Atenção</span>` : ""}${ava(p.foto, p.nome, "lg")}<b><span class="dot" style="background:${p.cor};margin-right:6px"></span>${esc(p.nome)}</b>${resumoNota(p)}<small>${esc(p.faz || p.cats.join(", "))}</small><span class="meta" style="color:var(--gold);font-weight:600">${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h · ${n} hoje</span></button>`; }).join("")}</div>`
       : `<div class="empty">Nenhuma profissional cadastrada. Adicione a primeira para abrir a agenda.</div>`}
+  </section>`;
+}
+const PDI_TIPOS = ["Conversa de alinhamento", "Treinamento", "Acompanhamento no atendimento", "Elogio / reconhecimento"];
+function vProPerfil() {
+  const p = pro(S.proView), D = desempenho(p);
+  const filtro = S.avFiltro || "todas";
+  const lista = D.l.filter(a => filtro === "todas" || (filtro === "neg" ? a.nota <= 3 : a.nota >= 4)).sort((a, b) => b.dia.localeCompare(a.dia));
+  const contTags = {}; D.l.forEach(a => a.tags.forEach(x => contTags[x] = (contTags[x] || 0) + 1));
+  const tagsOrd = Object.entries(contTags).sort((a, b) => b[1] - a[1]);
+  const acoes = S.pdi.filter(x => x.pro === p.id).sort((a, b) => b.id - a.id);
+  const pd = S.pdiDraft || { tipo: PDI_TIPOS[0], texto: "" };
+  const tendencia = D.rec.length && D.ant.length ? (D.m30 < D.mAnt - 0.3 ? `<span class="trend down">↓ caiu de ${nota1(D.mAnt)} para ${nota1(D.m30)}</span>` : D.m30 > D.mAnt + 0.3 ? `<span class="trend up">↑ subiu de ${nota1(D.mAnt)} para ${nota1(D.m30)}</span>` : `<span class="trend">estável</span>`) : "";
+  return `<section class="view">
+    ${navBack('data-proviewfechar="1"', esc(p.nome))}
+    <div class="card" style="display:flex;align-items:center;gap:14px">${ava(p.foto, p.nome, "lg", "ring")}<div style="min-width:0;flex:1"><h2>${esc(p.nome)}</h2><p class="meta">${esc(p.faz || p.cats.join(", "))} · ${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h</p></div><button class="btn ghost" type="button" data-proedit="${p.id}">Editar</button></div>
+    ${D.alerta ? `<div class="alerta" style="cursor:default"><i>!</i><span><b>Precisa de atenção</b>${D.neg} ${D.neg === 1 ? "avaliação ruim" : "avaliações ruins"} nos últimos 30 dias. Converse com ${esc(p.nome)} e registre uma ação de acompanhamento abaixo.</span></div>` : ""}
+    <div class="card sec"><span class="eyebrow">Avaliações das clientes</span>${painelNotas(D.l)}
+      ${D.l.length ? `<div class="gmini"><div><span>Últimos 30 dias</span><b>${D.rec.length ? "★ " + nota1(D.m30) : "–"}</b></div><div><span>Antes</span><b>${D.ant.length ? "★ " + nota1(D.mAnt) : "–"}</b></div><div><span>Ruins (30d)</span><b style="color:${D.neg ? "var(--bad)" : "inherit"}">${D.neg}</b></div></div>${tendencia}` : ""}
+    </div>
+    ${tagsOrd.length ? `<div class="card sec"><span class="eyebrow">O que as clientes mais dizem</span><div class="rtags big">${tagsOrd.map(([x, c]) => `<span class="${TAGS_RUINS.includes(x) ? "ruim" : "bom"}">${esc(x)} · ${c}</span>`).join("")}</div></div>` : ""}
+    <div class="card sec"><div class="row"><span class="eyebrow">Comentários</span><div class="segm mini" role="group"><button type="button" data-avf="todas" aria-pressed="${filtro === "todas"}">Todas</button><button type="button" data-avf="neg" aria-pressed="${filtro === "neg"}">Negativas</button><button type="button" data-avf="pos" aria-pressed="${filtro === "pos"}">Positivas</button></div></div>
+      <div class="revs">${lista.length ? lista.map(a => cardAvaliacao(a, { dona: true })).join("") : `<p class="meta">Nenhuma avaliação neste filtro.</p>`}</div>
+      <p class="meta">Esconder do app tira só o texto da vista das clientes. A nota continua contando, para a avaliação ser justa.</p></div>
+    <div class="card sec"><span class="eyebrow">Acompanhamento (PDI)</span>
+      ${acoes.length ? acoes.map(x => `<div class="pdi"><b>${esc(x.tipo)}</b><small>${dayLabel(x.dia)}</small>${x.texto ? `<p>${esc(x.texto)}</p>` : ""}</div>`).join("") : `<p class="meta">Nenhuma ação registrada ainda.</p>`}
+      <div class="sec" style="border-top:1px solid var(--line-2);padding-top:12px"><span class="meta" style="font-weight:600">Registrar ação</span>
+        <div class="chips" style="flex-wrap:wrap;margin:0;padding:0" role="group">${PDI_TIPOS.map(x => `<button class="chip" type="button" data-pditipo="${x}" aria-pressed="${pd.tipo === x}">${x}</button>`).join("")}</div>
+        <textarea id="pdi-texto" placeholder="Ex.: conversamos sobre pontualidade; combinamos chegar 15 min antes e revisar em 30 dias.">${esc(pd.texto)}</textarea>
+        <button class="btn full" type="button" id="pdi-salvar">Registrar ação</button></div>
+    </div>
   </section>`;
 }
 function vProEdit() {
@@ -233,13 +271,14 @@ function aprovar(b) {
 APP.telas.salao = () => {
   if (S.detail) return { html: vDetalhe() };
   if (S.draft) return { html: vProEdit() };
+  if (S.proView) return { html: vProPerfil() };
   if (S.sdraft) return { html: vSvcEdit() };
   if (S.cats) return { html: vCats() };
   const html = { pedidos: vPedidos, agenda: vAgenda, financeiro: vFinanceiro, servicos: vServicos, equipe: vEquipe }[S.tab]();
   const nav = tabs([["pedidos", "Pedidos", "inbox", pending()], ["agenda", "Agenda", "cal"], ["financeiro", "Financeiro", "wallet"], ["servicos", "Serviços", "list"], ["equipe", "Equipe", "users"]], S.tab);
   return { html, bottom: (S.tab === "financeiro" ? fFinanceiro() : "") + nav, tall: S.tab === "financeiro" };
 };
-APP.abas.salao = aba => { S.tab = aba; S.detail = null; S.draft = null; S.sdraft = null; S.cats = false; S.sheet = null; render(); window.scrollTo(0, 0); };
+APP.abas.salao = aba => { S.tab = aba; S.detail = null; S.draft = null; S.proView = null; S.sdraft = null; S.cats = false; S.sheet = null; render(); window.scrollTo(0, 0); };
 APP.fotoDestino.salao = url => { if (S.sdraft) S.sdraft.foto = url; else if (S.draft) S.draft.foto = url; };
 APP.camadas.push(lightbox);
 APP.folhas.rej = sh => {
@@ -254,6 +293,16 @@ APP.folhas.caixa = sh => {
       <button class="btn-gold" type="button" id="caixa-ok">${IC.lock}Confirmar fechamento</button>`;
 };
 APP.cliques.push((t, d, e) => {
+  if (d.proview) { S.proView = d.proview; S.avFiltro = "todas"; S.pdiDraft = null; render(); window.scrollTo(0, 0); return true; }
+  if (d.proviewfechar) { S.proView = null; render(); window.scrollTo(0, 0); return true; }
+  if (d.avf) { S.avFiltro = d.avf; render(); return true; }
+  if (d.ocultar) { const a = S.avaliacoes.find(x => x.id === +d.ocultar); a.oculto = !a.oculto; toast(a.oculto ? "Comentário escondido do app. A nota continua contando." : "Comentário visível no app de novo."); render(); return true; }
+  if (d.pditipo) { S.pdiDraft = { ...(S.pdiDraft || { texto: "" }), tipo: d.pditipo }; render(); return true; }
+  if (t.id === "pdi-salvar") {
+    const pd = S.pdiDraft || { tipo: PDI_TIPOS[0], texto: "" };
+    S.pdi.push({ id: ++seq, pro: S.proView, dia: HOJE, tipo: pd.tipo, texto: (pd.texto || "").trim() });
+    S.pdiDraft = null; toast("Ação registrada no acompanhamento de " + pro(S.proView).nome + "."); render(); return true;
+  }
   /* salão: pedidos */
   if (d.open) { detailFrom = window.scrollY; S.detail = +d.open; render(); window.scrollTo(0, 0); return true; }
   if (d.fechar) { S.detail = null; render(); window.scrollTo(0, detailFrom || 0); return true; }
@@ -337,7 +386,7 @@ APP.cliques.push((t, d, e) => {
   }
   if (d.delask) { S.confirmDel = true; render(); return true; }
   if (d.delcancel) { S.confirmDel = false; render(); return true; }
-  if (t.id === "pro-excluir") { const i = PROS.findIndex(p => p.id === S.draft.id), n = PROS[i].nome; PROS.splice(i, 1); S.draft = null; S.confirmDel = false; toast(n + " saiu da equipe."); render(); window.scrollTo(0, 0); return true; }
+  if (t.id === "pro-excluir") { const i = PROS.findIndex(p => p.id === S.draft.id), n = PROS[i].nome; PROS.splice(i, 1); S.draft = null; S.proView = null; S.confirmDel = false; toast(n + " saiu da equipe."); render(); window.scrollTo(0, 0); return true; }
 });
 APP.mudancas.push(e => {
   if (e.target.id === "fin-dia") { S.finDay = e.target.value; render(); return true; }
@@ -352,6 +401,7 @@ APP.mudancas.push(e => {
   }
 });
 APP.entradas.push(e => {
+  if (e.target.id === "pdi-texto") S.pdiDraft = { ...(S.pdiDraft || { tipo: PDI_TIPOS[0] }), texto: e.target.value };
   const dk = { "d-nome": "nome", "d-faz": "faz", "d-ini": "ini", "d-fim": "fim" }[e.target.id];
   if (dk && S.draft) S.draft[dk] = e.target.value;
 });

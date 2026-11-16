@@ -44,6 +44,8 @@ Partir do modelo de dados do app (`comum/nucleo.js`, objeto `S` e listas `SERVIC
 - `lancamentos (id, agendamento_id, forma, valor_centavos, dia, aprovado_em, recebido, caixa_id)`
 - `caixas (id, dia único, total_pix, total_cartao, total_dinheiro, total, fechado_em)`
 - `admins (id, nome, login, senha_hash)` para o login da dona
+- `avaliacoes (id, agendamento_id único, profissional_id, cliente_id, nota 1-5, etiquetas text[], comentario, oculto bool, criado_em)`: só uma por agendamento, e só de agendamento `aprovado`/`concluido` **depois do horário** (no front, `DEMONSTRACAO = false` em `comum/dados.js`)
+- `pdi (id, profissional_id, dia, tipo, texto, criado_em)`: ações de acompanhamento registradas pela dona
 
 ## API (rotas)
 
@@ -55,6 +57,8 @@ Partir do modelo de dados do app (`comum/nucleo.js`, objeto `S` e listas `SERVIC
 - `POST /agendamentos`: itens, profissional (ou "qualquer"), dia, hora, pagamento, observação. O servidor **recalcula preço e duração** e confere se o horário ainda está livre. Pix → status `aguardando_pix`; no salão → `aguardando`.
 - `POST /pix/criar` (agendamento) → QR e copia e cola do Mercado Pago, valor do servidor. `GET /pix/status/:id`. `POST /pix/webhook` → confirma, muda para `aguardando` (vai para a dona). **Copiar do DM**, incluindo a idempotência.
 - `GET /meus-agendamentos` (da cliente logada).
+- `GET /profissionais/:id/avaliacoes`: média, quantidade, distribuição e comentários **não escondidos** (a nota conta todas).
+- `POST /agendamentos/:id/avaliacao` (cliente logada, dona do agendamento, depois do horário, uma vez).
 
 **Painel (login da dona):**
 - `POST /admin/entrar`.
@@ -63,6 +67,7 @@ Partir do modelo de dados do app (`comum/nucleo.js`, objeto `S` e listas `SERVIC
 - `POST /admin/agendamentos/:id/reprovar` (motivo obrigatório) → se Pix pago, **estorno pela API do Mercado Pago** (`POST /v1/payments/:id/refunds`).
 - `GET /admin/agenda?dia=&profissional=`.
 - `GET /admin/financeiro?dia=`, `POST /admin/caixa/fechar?dia=`.
+- `GET /admin/profissionais/:id/desempenho` (todas as avaliações, inclusive escondidas, médias de 30 dias e anterior, etiquetas mais frequentes, alerta), `POST /admin/avaliacoes/:id/ocultar`, `GET/POST /admin/profissionais/:id/pdi`.
 - CRUD de `/admin/servicos`, `/admin/categorias`, `/admin/profissionais` (com upload de foto: guardar em `/var/www/favorita/uploads/` servido pelo Nginx, ou no banco reduzido).
 
 ## Sincronização

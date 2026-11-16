@@ -59,7 +59,7 @@ const fs = require('fs');
   await p.click('[data-svcedit="4"]'); await top(); await shot('salao', '11-editar-servico', 'Editar serviço com opções'); await p.click('[data-svcfechar="1"]');
   await p.click('#abrir-cats'); await top(); await shot('salao', '12-categorias', 'Categorias'); await p.click('[data-catsfechar="1"]');
   await p.click('[data-tab="equipe"]'); await top(); await shot('salao', '13-equipe', 'Equipe');
-  await p.click('[data-proedit="ana"]'); await top(); await shot('salao', '14-editar-profissional', 'Editar profissional: foto, especialidades, horário, cor na agenda'); await p.click('[data-profechar="1"]');
+  await p.click('[data-proview="ana"]'); await p.click('[data-proedit="ana"]'); await top(); await shot('salao', '14-editar-profissional', 'Editar profissional: foto, especialidades, horário, cor na agenda'); await p.click('[data-profechar="1"]');
 
   await p.click('#as-cliente'); await p.click('[data-tab="meus"]'); await top(); await shot('cliente', '13-meus-horarios-respostas', 'Meus horários: confirmado e não aprovado');
   fs.writeFileSync(OUT + '/lista.json', JSON.stringify(list, null, 1));

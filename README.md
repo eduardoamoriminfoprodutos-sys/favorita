@@ -42,6 +42,7 @@ Depois de ligar o GitHub Pages (ver abaixo):
 | `testes/testar.js` | 29 verificações de ponta a ponta na `demo/`. |
 | `testes/testar-abas.js` | Verifica capa, app e painel em abas separadas conversando entre si. |
 | `testes/testar-whatsapp.js` | Confere os atalhos de WhatsApp do salão no app da cliente. |
+| `testes/testar-avaliacoes.js` | Avaliações por profissional: nota no card, resumo, avaliar, alerta, desempenho e PDI. |
 | `prints/` | Prints de todas as telas (`prints/gerar-prints.js` refaz). |
 | `redesign-claude-design/`, `Mobile app design project.zip` | O redesign original do Claude Design (referência visual). |
 | `design-original-stitch/` | O primeiro rascunho, feito no Google Stitch. |
@@ -62,6 +63,7 @@ npx playwright install chromium      # uma vez
 node testes/testar.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg
 node testes/testar-abas.js http://localhost:8000/ pasta-para-prints
 node testes/testar-whatsapp.js http://localhost:8000/cliente/ pasta-para-prints
+node testes/testar-avaliacoes.js http://localhost:8000/demo/ pasta-para-prints
 node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg prints
 ```
 
@@ -71,6 +73,8 @@ node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jp
 - **Todo agendamento passa pela aprovação da dona.** Pix só chega para ela depois de pago; se reprovar, o Pix volta para a cliente.
 - **Ao aprovar, o pedido vira um lançamento no Financeiro.** A dona fecha o caixa do dia por lá.
 - A cliente tem perfil (foto, nome, WhatsApp, endereço) e pode deixar observação no agendamento.
+- **Avaliação por profissional (estilo Google):** estrelas e número de avaliações no card de cada profissional; a cliente vê o resumo (média, barras de 5 a 1, comentários) e avalia depois de um atendimento confirmado (estrelas, etiquetas e comentário). Só avalia quem foi atendida, uma vez por atendimento.
+- **Gestão da equipe pelas avaliações:** na Equipe, alerta de atenção quando uma profissional recebe avaliações ruins recentes (2 ou mais notas de 1 a 2 estrelas em 30 dias, ou média recente abaixo de 3,5). No desempenho dela: nota dos últimos 30 dias comparada com antes, elogios e reclamações mais repetidos, comentários com filtro e o registro de ações de **PDI** (conversa, treinamento, acompanhamento, reconhecimento). A dona pode esconder do app um comentário ofensivo, mas a nota continua contando.
 - **Falar com o salão no WhatsApp** (número em `marca.js`): card "Não encontrou o que procura?" no fim do catálogo, atalho no perfil e oferta de combinar/pedir encaixe quando não há serviço, profissional ou horário.
 - A confirmar com a dona: cartão e dinheiro entram no Financeiro na aprovação ou só quando o atendimento for concluído.
 

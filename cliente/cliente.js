@@ -52,8 +52,8 @@ function vAgendar() {
     <div class="card sec"><span class="eyebrow">Profissional</span>
       ${cands.length ? `<div class="hs" role="group" aria-label="Profissional">
         <button class="pcard" type="button" data-pro="qualquer" aria-pressed="${S.pro === "qualquer"}"><span class="ck">✓</span><span class="anyico">✦</span><b>Qualquer uma</b><span class="meta">1ª livre</span><div class="skills"><span class="n">Mais rápido</span></div></button>
-        ${cands.map(p => `<button class="pcard" type="button" data-pro="${p.id}" aria-pressed="${S.pro === p.id}"><span class="ck">✓</span>${ava(p.foto, p.nome, "lg")}<b>${esc(p.nome)}</b><span class="hr">${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h</span><div class="skills">${skills(p).slice(0, 3).map(x => `<span>${esc(x)}</span>`).join("")}</div></button>`).join("")}
-      </div>` : `<div class="empty">Nenhuma profissional faz todos esses serviços juntos. Separe em dois agendamentos ou combine com o salão.${btnWa(msgOla("queria agendar " + nomes(S.cart) + " juntos."), "Combinar no WhatsApp")}</div>`}
+        ${cands.map(p => `<button class="pcard" type="button" data-pro="${p.id}" aria-pressed="${S.pro === p.id}"><span class="ck">✓</span>${ava(p.foto, p.nome, "lg")}<b>${esc(p.nome)}</b><span class="hr">${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h</span>${resumoNota(p)}<div class="skills">${skills(p).slice(0, 3).map(x => `<span>${esc(x)}</span>`).join("")}</div></button>`).join("")}
+      </div>${S.pro !== "qualquer" ? `<button class="link" type="button" data-veraval="${S.pro}">Ver avaliações de ${esc(pro(S.pro).nome)} →</button>` : `<p class="meta">Toque numa profissional para ver as avaliações dela.</p>`}` : `<div class="empty">Nenhuma profissional faz todos esses serviços juntos. Separe em dois agendamentos ou combine com o salão.${btnWa(msgOla("queria agendar " + nomes(S.cart) + " juntos."), "Combinar no WhatsApp")}</div>`}
     </div>
     <div class="card sec"><div class="row"><span class="eyebrow">Dia</span><div class="monthnav"><button type="button" data-wk="-1" ${S.week <= 0 ? "disabled" : ""} aria-label="Semana anterior">‹</button>${mes[0].toUpperCase() + mes.slice(1)}<button type="button" data-wk="1" ${S.week >= 3 ? "disabled" : ""} aria-label="Próxima semana">›</button></div></div>
       <div class="week" role="group">${dias.map(k => { const d = dOf(k), ok = aberto(k), tem = ok && cands.length && slots(k).some(s => s.free);
@@ -128,6 +128,8 @@ function vMeus() {
       return `<article class="card bcard"><div class="row">${statusPill(b)}<span class="meta">${payText(b)}</span></div>
         <div class="bline"><span class="dbox ${off ? "dim" : ""}"><small>${WD[d.getDay()]}</small><b>${d.getDate()}</b><em>${MES[d.getMonth()].slice(0, 3)}</em></span>
           <div style="min-width:0"><h3>${esc(nomes(b.itens))}</h3><p class="meta">${b.time} – ${toHM(toMin(b.time) + mins(b.itens))}</p><div class="who">${ava(p.foto, p.nome, "xs")}com ${esc(p.nome)} · ${fmt(sum(b.itens))}</div></div></div>
+        ${b.status === "aprovado" && b.avaliacao ? `<div class="minhaav">Sua avaliação ${estrelas((S.avaliacoes.find(a => a.id === b.avaliacao) || { nota: 0 }).nota, "sm")}</div>` : ""}
+        ${podeAvaliar(b) ? `<button class="btn full avbtn" type="button" data-avaliar="${b.id}"><span class="stars-ic">★</span>Avaliar atendimento com ${esc(p.nome)}</button>` : ""}
         ${b.status === "aprovado" ? `<div class="acts"><a class="btn soft" href="${SALAO.mapa}" target="_blank" rel="noopener">Como chegar</a>${FONE_SALAO ? `<a class="btn soft" href="${wa}" target="_blank" rel="noopener">Falar no WhatsApp</a>` : ""}</div>` : ""}
         ${off ? `<div class="why"><i>!</i><span><b>${esc(b.motivo || "Não aprovado")}.</b> ${b.refund ? "Seu Pix de " + fmt(sum(b.itens)) + " foi devolvido." : "Escolha outro, sem custo."}</span></div>
           <button class="btn-gold" type="button" data-go="agendar" data-refaz="${b.id}"><span style="width:17px;height:17px;display:inline-grid">${IC.cal}</span>Escolher outro horário</button>` : ""}
@@ -137,6 +139,19 @@ function vMeus() {
     }).join("") : `<div class="empty">${S.meusTab === "prox" ? "Você ainda não tem horários marcados." : "Seus atendimentos já feitos aparecem aqui."}<button class="btn" type="button" data-tab="catalogo">Agendar agora</button></div>`}
   </section>`;
 }
+/* avaliar: só quem foi atendida; no sistema de verdade, depois do horário (ver DEMONSTRACAO em comum/dados.js) */
+const fimPassou = b => b.day < HOJE || (b.day === HOJE && toMin(b.time) + mins(b.itens) <= new Date().getHours() * 60 + new Date().getMinutes());
+const podeAvaliar = b => b.mine && b.status === "aprovado" && !b.avaliacao && (fimPassou(b) || DEMONSTRACAO);
+function folhaAvaliar() {
+  const a = S.avDraft, b = bk(a.bid), p = pro(b.pro), tags = a.nota && a.nota <= 3 ? TAGS_RUINS : TAGS_BOAS;
+  return `<h2>Como foi com ${esc(p.nome)}?</h2><p class="meta">${esc(nomes(b.itens))} · ${dayLabel(b.day)}. Sua avaliação ajuda outras clientes e o salão.</p>
+    <div class="starpick" role="group" aria-label="Nota">${[1, 2, 3, 4, 5].map(k => `<button type="button" data-nota="${k}" aria-pressed="${k <= (a.nota || 0)}" aria-label="${k} ${k === 1 ? "estrela" : "estrelas"}">★</button>`).join("")}</div>
+    <p class="meta" style="text-align:center;margin-top:-6px">${["Toque nas estrelas", "Muito ruim", "Ruim", "Regular", "Bom", "Excelente"][a.nota || 0]}</p>
+    ${a.nota ? `<div class="chips" style="flex-wrap:wrap;margin:0;padding:0" role="group" aria-label="O que marcou">${tags.map(x => `<button class="chip" type="button" data-avtag="${x}" aria-pressed="${a.tags.includes(x)}">${x}</button>`).join("")}</div>` : ""}
+    <label class="field">Comentário (opcional)<textarea id="av-texto" placeholder="Conte como foi o atendimento">${esc(a.texto || "")}</textarea></label>
+    <button class="btn full" type="button" id="av-enviar" ${a.nota ? "" : "disabled"}>Enviar avaliação</button>`;
+}
+
 function vPerfil() {
   const P = S.perfil;
   return `<section class="view">
@@ -181,12 +196,27 @@ APP.telas.cliente = () => {
 APP.abas.cliente = aba => { readPerfilFields(); go(aba); };
 APP.fotoDestino.cliente = url => { S.perfil.foto = url; };
 APP.guardarCampos.push(readPerfilFields);
+APP.folhas.aval = sh => { const p = pro(sh.pro), l = avalDe(p.id);
+  return `<div class="row" style="justify-content:flex-start;gap:12px">${ava(p.foto, p.nome, "md")}<div><h2>${esc(p.nome)}</h2><p class="meta">${esc(p.faz || "")}</p></div></div>${painelNotas(l)}
+    <div class="revs">${l.slice().sort((a, b) => b.dia.localeCompare(a.dia)).map(a => cardAvaliacao(a)).join("")}</div>`; };
+APP.folhas.avaliar = () => folhaAvaliar();
 APP.folhas.opt = sh => {
     const s = svc(sh.sid);
     return `<h2>${esc(s.nome)}</h2><p class="meta">Escolha uma opção. O preço e o tempo mudam conforme a escolha.</p>
       ${s.opcoes.map((o, i) => `<button class="opt" type="button" data-addopt="${s.id}:${i}"><span>${esc(o.nome[0].toUpperCase() + o.nome.slice(1))}<small>${dur(o.min)}</small></span><b>${fmt(o.preco)}</b></button>`).join("")}`;
 };
 APP.cliques.push((t, d, e) => {
+  if (d.veraval) { S.sheet = { t: "aval", pro: d.veraval }; render(); return true; }
+  if (d.avaliar) { S.avDraft = { bid: +d.avaliar, nota: 0, tags: [], texto: "" }; S.sheet = { t: "avaliar" }; render(); return true; }
+  if (d.nota) { const n = +d.nota; if ((n <= 3) !== ((S.avDraft.nota || 5) <= 3)) S.avDraft.tags = []; S.avDraft.nota = n; render(); return true; }
+  if (d.avtag) { const g = S.avDraft.tags; S.avDraft.tags = g.includes(d.avtag) ? g.filter(x => x !== d.avtag) : [...g, d.avtag]; render(); return true; }
+  if (t.id === "av-enviar") {
+    const a = S.avDraft, b = bk(a.bid), P = S.perfil, partes = (P.nome || b.nome).trim().split(/\s+/);
+    const nome = partes[0] + (partes.length > 1 ? " " + partes[partes.length - 1][0] + "." : "");
+    const nova = { id: ++seq, pro: b.pro, nota: a.nota, texto: (a.texto || "").trim(), tags: a.tags, nome, dia: HOJE, itens: b.itens, bid: b.id, oculto: false };
+    S.avaliacoes.push(nova); b.avaliacao = nova.id; S.sheet = null; S.avDraft = null;
+    toast("Obrigada! Sua avaliação foi enviada."); render(); return true;
+  }
   if (d.cat) { S.cat = d.cat; render(); return true; }
   if (d.svc) {
     const s = svc(+d.svc);
@@ -235,4 +265,5 @@ APP.entradas.push(e => {
   if (e.target.id === "f-nome") S.fNome = e.target.value;
   if (e.target.id === "f-fone") S.fFone = e.target.value;
   if (e.target.id === "f-obs") S.obs = e.target.value;
+  if (e.target.id === "av-texto" && S.avDraft) S.avDraft.texto = e.target.value;
 });

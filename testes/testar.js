@@ -71,7 +71,7 @@ const { chromium } = require('playwright');
   await p.click('[data-tog="6"]'); await p.click('#abrir-cats'); await p.fill('#cat-nova', 'Depilação'); await p.click('#cat-add'); ok((await toast()).includes('criada'), 'categoria criada');
   await p.click('[data-catsfechar="1"]'); await p.click('[data-tab="equipe"]'); await p.click('[data-proedit="novo"]');
   await p.fill('#d-nome', 'Larissa'); await p.click('[data-dcat="Unhas"]'); await p.click('[data-cor="#8E9DB0"]'); await p.click('#pro-salvar'); ok((await toast()).includes('entrou'), 'nova profissional');
-  await p.click('[data-proedit="ana"]'); await p.click('[data-delask="1"]'); ok(!(await p.$('#pro-excluir')), 'bloqueia excluir quem tem agenda');
+  await p.click('[data-proview="ana"]'); await p.click('[data-proedit="ana"]'); await p.click('[data-delask="1"]'); ok(!(await p.$('#pro-excluir')), 'bloqueia excluir quem tem agenda');
   // cliente vê respostas
   await p.click('#as-cliente'); await p.click('[data-tab="meus"]');
   const meus = (await p.textContent('#root')).replace(/\s+/g, ' ');

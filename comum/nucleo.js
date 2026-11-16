@@ -54,6 +54,27 @@ const D1 = (() => { let k = addDays(D0, 1); if (dOf(k).getDay() === 0) k = addDa
 const HORIZONTE = addDays(D0, 27);
 const aberto = k => dOf(k).getDay() !== 0 && k >= D0 && k <= HORIZONTE;
 
+/* avaliações de exemplo: [profissional, nota, dias atrás, cliente, etiquetas, comentário, serviços] */
+const AV_EXEMPLO = [
+  ["ana", 5, 2, "Juliana A.", ["Caprichosa", "Resultado lindo"], "Amei a selagem, cabelo leve e brilhando. Super atenciosa!", ["4:1"]],
+  ["ana", 5, 6, "Renata L.", ["Pontual", "Simpática"], "Chegou na hora e explicou tudo antes de começar.", [1]],
+  ["ana", 4, 12, "Paula R.", ["Caprichosa"], "Corte ficou ótimo, só demorou um pouco mais que o previsto.", [1, 2]],
+  ["ana", 5, 25, "Camila S.", ["Resultado lindo"], "Melhor coloração que já fiz.", [5]],
+  ["ana", 5, 40, "Bruna M.", [], "Sempre volto com ela.", [3]],
+  ["bia", 5, 3, "Carol M.", ["Caprichosa", "Ambiente limpo"], "Unhas perfeitas e tudo bem higienizado.", [6, 7]],
+  ["bia", 4, 9, "Fernanda S.", ["Simpática"], "Muito gente boa, o esmalte durou bem.", [6]],
+  ["bia", 5, 33, "Larissa T.", ["Pontual"], "", [8]],
+  ["carla", 5, 4, "Juliana A.", ["Caprichosa", "Resultado lindo"], "Sobrancelha ficou perfeita, natural do jeito que pedi.", [9]],
+  ["carla", 5, 15, "Ana P.", ["Simpática"], "Limpeza de pele maravilhosa.", [11]],
+  ["carla", 5, 45, "Mariana C.", [], "", [10]],
+  ["duda", 2, 3, "Patrícia G.", ["Atrasou", "Atendimento apressado"], "Atrasou 30 minutos e fez a escova com pressa.", [2]],
+  ["duda", 1, 8, "Sandra V.", ["Pouca atenção", "Resultado abaixo"], "Ficou no celular durante o atendimento e o corte ficou torto.", [1]],
+  ["duda", 3, 14, "Kelly R.", ["Demorou demais"], "Resultado bom, mas demorou demais.", [6]],
+  ["duda", 2, 20, "Rose N.", ["Atendimento apressado"], "Parecia com pressa de terminar.", [1]],
+  ["duda", 5, 70, "Cris A.", ["Simpática"], "Muito querida, adorei.", [2]],
+  ["duda", 5, 85, "Lu M.", ["Caprichosa"], "Mão boa demais!", [7]]
+].map(([pro, nota, n, nome, tags, texto, itens], i) => ({ id: i + 1, pro, nota, dia: addDays(HOJE, -n), nome, tags, texto, itens, oculto: false, ex: true }));
+
 let seq = 100;
 const S = {
   as: MODO === "salao" ? "salao" : "cliente", view: "catalogo", tab: "pedidos", detail: null, zoom: null, sheet: null,
@@ -76,7 +97,9 @@ const S = {
     { id: 2, forma: "dinheiro", valor: 65, nome: "Juliana Alves", itens: [9, 10], at: "11:05", day: HOJE, ex: true },
     { id: 3, forma: "cartao", valor: 45, nome: "Renata Lima", itens: [9], at: "13:20", day: HOJE, ex: true },
     { id: 4, forma: "dinheiro", valor: 25, nome: "Carol Mendes", itens: [6], at: "14:10", day: HOJE, ex: true }
-  ]
+  ],
+  avaliacoes: AV_EXEMPLO,
+  pdi: []
 };
 
 const svc = id => SERVICES.find(s => s.id === id && s.disp !== "arquivado") || SERVICES.find(s => s.id === id);
@@ -161,6 +184,31 @@ function payText(b) {
   if (b.pay === "pix") return b.refund ? "Pix devolvido" : (b.paid ? "Pix pago" : "Pix pendente");
   return "No salão · " + (b.payIn === "dinheiro" ? "dinheiro" : "cartão");
 }
+/* ===== avaliações (estilo Google) ===== */
+const TAGS_BOAS = ["Pontual", "Caprichosa", "Simpática", "Ambiente limpo", "Resultado lindo"];
+const TAGS_RUINS = ["Atrasou", "Atendimento apressado", "Pouca atenção", "Resultado abaixo", "Demorou demais"];
+const avalDe = proId => S.avaliacoes.filter(a => a.pro === proId);
+const media = l => l.length ? l.reduce((s, a) => s + a.nota, 0) / l.length : 0;
+const nota1 = v => v.toFixed(1).replace(".", ",");
+const diasAtras = k => Math.round((dOf(HOJE) - dOf(k)) / 864e5);
+const quando = k => { const n = diasAtras(k); return n <= 0 ? "hoje" : n === 1 ? "ontem" : n < 30 ? "há " + n + " dias" : n < 60 ? "há 1 mês" : "há " + Math.round(n / 30) + " meses"; };
+const estrelas = (v, cls = "") => `<span class="stars ${cls}" role="img" aria-label="${nota1(v)} de 5 estrelas"><span style="width:${Math.round(v / 5 * 100)}%"></span></span>`;
+/* a nota pública conta TODAS as avaliações; esconder do app só tira o texto do comentário */
+const resumoNota = p => { const l = avalDe(p.id); return l.length ? `<span class="rate"><b>★</b> ${nota1(media(l))} <i>(${l.length})</i></span>` : `<span class="rate novo">Sem avaliações ainda</span>`; };
+function cardAvaliacao(a, opts = {}) {
+  const tags = a.tags.length ? `<div class="rtags">${a.tags.map(x => `<span class="${TAGS_RUINS.includes(x) ? "ruim" : "bom"}">${esc(x)}</span>`).join("")}</div>` : "";
+  const texto = a.oculto && !opts.dona ? "" : (a.texto ? `<p>${esc(a.texto)}</p>` : "");
+  return `<div class="rev"><div class="row"><span class="rev-who">${ava("", a.nome, "sm")}<span><b>${esc(a.nome)}${a.ex ? ` <span class="tag-ex">Ex.</span>` : ""}</b><small>${esc(nomes(a.itens))}</small></span></span><span class="rev-when">${estrelas(a.nota, "sm")}<small>${quando(a.dia)}</small></span></div>
+    ${tags}${texto}${opts.dona ? `<div class="row" style="justify-content:flex-start;gap:10px">${a.oculto ? `<span class="pill n">Escondido do app</span>` : ""}<button class="link" type="button" data-ocultar="${a.id}">${a.oculto ? "Mostrar no app" : "Esconder do app"}</button></div>` : ""}</div>`;
+}
+/* resumo: média grande, estrelas, quantidade e barras de 5 a 1 */
+function painelNotas(lista) {
+  const n = lista.length, m = media(lista);
+  if (!n) return `<div class="empty" style="padding:18px">Ainda não tem avaliações.</div>`;
+  return `<div class="notabox"><div class="nb-big"><b>${nota1(m)}</b>${estrelas(m)}<small>${n} ${n === 1 ? "avaliação" : "avaliações"}</small></div>
+    <div class="nb-dist">${[5, 4, 3, 2, 1].map(k => { const c = lista.filter(a => a.nota === k).length; return `<div class="dist"><span>${k}</span><span class="dtrack"><i style="width:${Math.round(c / n * 100)}%"></i></span><span>${c}</span></div>`; }).join("")}</div></div>`;
+}
+
 /* ===== motor de tela ===== */
 function sheet() {
   const sh = S.sheet; if (!sh) return "";
