@@ -44,7 +44,7 @@ Partir do modelo de dados do app (`comum/nucleo.js`, objeto `S` e listas `SERVIC
 - `lancamentos (id, agendamento_id, forma, valor_centavos, dia, aprovado_em, recebido, caixa_id)`
 - `caixas (id, dia único, total_pix, total_cartao, total_dinheiro, total, fechado_em)`
 - `admins (id, nome, login, senha_hash)` para o login da dona
-- `avaliacoes (id, agendamento_id único, profissional_id, cliente_id, nota 1-5, etiquetas text[], comentario, oculto bool, criado_em)`: só uma por agendamento, e só de agendamento `aprovado`/`concluido` **depois do horário** (no front, `DEMONSTRACAO = false` em `comum/dados.js`)
+- `avaliacoes (id, agendamento_id único, profissional_id, cliente_id, nota 1-5, etiquetas text[], comentario, oculto bool, criado_em)`: só uma por agendamento, e só de agendamento **`concluido`** (concluído no painel pela dona ou, com o acesso por colaboradora, pela profissional do atendimento)
 - `pdi (id, profissional_id, dia, tipo, texto, criado_em)`: ações de acompanhamento registradas pela dona
 
 ## API (rotas)
@@ -63,12 +63,17 @@ Partir do modelo de dados do app (`comum/nucleo.js`, objeto `S` e listas `SERVIC
 **Painel (login da dona):**
 - `POST /admin/entrar`.
 - `GET /admin/pedidos?status=aguardando`, `GET /admin/agendamentos/:id` (com histórico e dados do pagamento para o comprovante: pagador, valor, data, ID da transação do Mercado Pago).
+- `POST /admin/agendamentos/:id/concluir` → status `concluido` + histórico ("Concluiu o atendimento"); a cliente passa a ver o convite para avaliar.
 - `POST /admin/agendamentos/:id/aprovar` → status `aprovado` + **cria lançamento**.
 - `POST /admin/agendamentos/:id/reprovar` (motivo obrigatório) → se Pix pago, **estorno pela API do Mercado Pago** (`POST /v1/payments/:id/refunds`).
 - `GET /admin/agenda?dia=&profissional=`.
 - `GET /admin/financeiro?dia=`, `POST /admin/caixa/fechar?dia=`.
 - `GET /admin/profissionais/:id/desempenho` (todas as avaliações, inclusive escondidas, médias de 30 dias e anterior, etiquetas mais frequentes, alerta), `POST /admin/avaliacoes/:id/ocultar`, `GET/POST /admin/profissionais/:id/pdi`.
 - CRUD de `/admin/servicos`, `/admin/categorias`, `/admin/profissionais` (com upload de foto: guardar em `/var/www/favorita/uploads/` servido pelo Nginx, ou no banco reduzido).
+
+## Próxima etapa (vender antes): acesso por colaboradora
+
+Ver `docs/FUTURO-ACESSO-COLABORADORAS.md`. **Não implementar sem o OK do Eduardo**: ele apresenta na negociação. Se for implementado, o servidor barra por papel (dona x profissional), não só a tela.
 
 ## Sincronização
 

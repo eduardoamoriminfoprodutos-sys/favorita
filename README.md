@@ -15,7 +15,7 @@ Depois de ligar o GitHub Pages (ver abaixo):
 | Painel do salão | `https://eduardoamoriminfoprodutos-sys.github.io/favorita/salao/` |
 | Os dois na mesma tela | `https://eduardoamoriminfoprodutos-sys.github.io/favorita/demo/` |
 
-**Como apresentar:** abra o app da cliente e o painel do salão em duas abas do mesmo aparelho. O pedido feito no app aparece no painel na hora, e a resposta do salão aparece para a cliente. Os dados ficam guardados no próprio navegador; "Zerar demonstração", na capa, volta tudo ao início.
+**Como apresentar em dois aparelhos (celular + computador):** use o link de apresentação do claude.ai (o protótipo publicado como artefato), entrando com a mesma conta nos dois: ali os dados ficam num banco compartilhado e as telas conversam ao vivo. No GitHub Pages, as telas só conversam **no mesmo aparelho**: abra o app da cliente e o painel do salão em duas abas do mesmo aparelho. O pedido feito no app aparece no painel na hora, e a resposta do salão aparece para a cliente. Os dados ficam guardados no próprio navegador; "Zerar demonstração", na capa, volta tudo ao início.
 
 ### Ligar o GitHub Pages
 
@@ -36,13 +36,15 @@ Depois de ligar o GitHub Pages (ver abaixo):
 | `comum/nucleo.js` | O que os dois usam: datas e dinheiro, dados de exemplo, estado, regras de horário, ícones, componentes e o motor de tela. |
 | `comum/dados.js` | **Única camada de dados.** Hoje grava no navegador; no sistema de verdade passa a falar com a API da VPS (ver `docs/ENTREGA-VPS.md`). |
 | `comum/estilos.css` | Todo o visual (redesign do Claude Design). As cores são variáveis em `:root`. |
+| `docs/FUTURO-ACESSO-COLABORADORAS.md` | **Proposta futura (não implementada):** login de cada profissional com limites (sem Financeiro, Equipe e cadastros), concluir os próprios atendimentos e "Minhas avaliações". Para a negociação. |
 | `docs/ENTREGA-VPS.md` | **O que fazer para pôr no ar sincronizado pela VPS**: ambiente exclusivo da Favorita, banco, rotas da API, Pix e sincronização. |
 | `index.html` | Capa da apresentação. |
 | `demo/` | Os dois apps juntos, com o botão "Ver como" (para apresentar). |
 | `testes/testar.js` | 29 verificações de ponta a ponta na `demo/`. |
 | `testes/testar-abas.js` | Verifica capa, app e painel em abas separadas conversando entre si. |
 | `testes/testar-whatsapp.js` | Confere os atalhos de WhatsApp do salão no app da cliente. |
-| `testes/testar-avaliacoes.js` | Avaliações por profissional: nota no card, resumo, avaliar, alerta, desempenho e PDI. |
+| `testes/testar-avaliacoes.js` | Avaliações: concluir atendimento, pop-up com "Agora não", nota no card, resumo, alerta, desempenho e PDI. |
+| `testes/testar-dois-aparelhos.js` | Simula a apresentação em dois aparelhos (salão no celular, cliente no computador) pelo banco compartilhado do link do claude.ai. |
 | `prints/` | Prints de todas as telas (`prints/gerar-prints.js` refaz). |
 | `redesign-claude-design/`, `Mobile app design project.zip` | O redesign original do Claude Design (referência visual). |
 | `design-original-stitch/` | O primeiro rascunho, feito no Google Stitch. |
@@ -64,6 +66,7 @@ node testes/testar.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg
 node testes/testar-abas.js http://localhost:8000/ pasta-para-prints
 node testes/testar-whatsapp.js http://localhost:8000/cliente/ pasta-para-prints
 node testes/testar-avaliacoes.js http://localhost:8000/demo/ pasta-para-prints
+node testes/testar-dois-aparelhos.js http://localhost:8000/demo/ pasta-para-prints
 node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg prints
 ```
 
@@ -73,7 +76,7 @@ node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jp
 - **Todo agendamento passa pela aprovação da dona.** Pix só chega para ela depois de pago; se reprovar, o Pix volta para a cliente.
 - **Ao aprovar, o pedido vira um lançamento no Financeiro.** A dona fecha o caixa do dia por lá.
 - A cliente tem perfil (foto, nome, WhatsApp, endereço) e pode deixar observação no agendamento.
-- **Avaliação por profissional (estilo Google):** estrelas e número de avaliações no card de cada profissional; a cliente vê o resumo (média, barras de 5 a 1, comentários) e avalia depois de um atendimento confirmado (estrelas, etiquetas e comentário). Só avalia quem foi atendida, uma vez por atendimento.
+- **Avaliação por profissional (estilo Google):** estrelas e número de avaliações no card de cada profissional; a cliente vê o resumo (média, barras de 5 a 1, comentários) e avalia depois que o atendimento é **concluído** no painel: ao abrir o app aparece o pop-up "Como foi seu atendimento com a Ana?" (não obrigatório, com "Agora não"; dá para avaliar depois em Meus horários). Só avalia quem foi atendida, uma vez por atendimento.
 - **Gestão da equipe pelas avaliações:** na Equipe, alerta de atenção quando uma profissional recebe avaliações ruins recentes (2 ou mais notas de 1 a 2 estrelas em 30 dias, ou média recente abaixo de 3,5). No desempenho dela: nota dos últimos 30 dias comparada com antes, elogios e reclamações mais repetidos, comentários com filtro e o registro de ações de **PDI** (conversa, treinamento, acompanhamento, reconhecimento). A dona pode esconder do app um comentário ofensivo, mas a nota continua contando.
 - **Falar com o salão no WhatsApp** (número em `marca.js`): card "Não encontrou o que procura?" no fim do catálogo, atalho no perfil e oferta de combinar/pedir encaixe quando não há serviço, profissional ou horário.
 - A confirmar com a dona: cartão e dinheiro entram no Financeiro na aprovação ou só quando o atendimento for concluído.

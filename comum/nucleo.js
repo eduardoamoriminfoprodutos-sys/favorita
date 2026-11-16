@@ -3,7 +3,7 @@
 /* NÚCLEO: o que o app da cliente e o painel do salão usam em comum:
    utilidades de data e dinheiro, dados de exemplo, estado, regras de horário, ícones, componentes e o "motor" de tela.
    Cada parte (cliente/cliente.js, salao/salao.js) se registra em APP. */
-const APP = { telas: {}, abas: {}, cliques: [], mudancas: [], entradas: [], folhas: {}, camadas: [], fotoDestino: {}, guardarCampos: [] };
+const APP = { telas: {}, abas: {}, cliques: [], mudancas: [], entradas: [], folhas: {}, aoFechar: {}, camadas: [], fotoDestino: {}, guardarCampos: [] };
 const LOGO = MARCA.logo;
 const SALAO = MARCA.salao;
 const MODO = window.FAV_MODO || "demo";   /* "cliente", "salao" ou "demo" (os dois, com o botão Ver como) */
@@ -120,6 +120,7 @@ const prosFor = ks => PROS.filter(p => ks.every(k => p.cats.includes(it(k).cat))
 const desde = s => s.opcoes.length ? Math.min(...s.opcoes.map(o => o.preco)) : s.preco;
 const minDur = s => s.opcoes.length ? Math.min(...s.opcoes.map(o => o.min)) : s.min;
 const skills = p => SERVICES.filter(s => p.cats.includes(s.cat) && s.disp === "disponivel").map(s => s.nome.split(" ")[0]).filter((v, i, a) => a.indexOf(v) === i);
+const naAgenda = b => b.status === "aprovado" || b.status === "concluido";
 const pending = () => S.bookings.filter(b => b.status === "aguardando").length;
 const ini = n => (n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
 const fotoDe = b => (b.mine && S.perfil.foto) || b.foto;
@@ -178,6 +179,7 @@ function weekDays(w) {
   if (b.status === "pix") return `<span class="pill warn dotted">Aguardando Pix</span>`;
   if (b.status === "aguardando") return `<span class="pill warn dotted">Aguardando salão</span>`;
   if (b.status === "aprovado") return `<span class="pill ok dotted">Confirmado</span>`;
+  if (b.status === "concluido") return `<span class="pill ok dotted">Concluído</span>`;
   return `<span class="pill bad dotted">Não aprovado</span>`;
 }
 function payText(b) {
@@ -213,7 +215,8 @@ function painelNotas(lista) {
 function sheet() {
   const sh = S.sheet; if (!sh) return "";
   const f = APP.folhas[sh.t]; if (!f) return "";
-  return `<div class="scrim" data-sheetclose="1"><div class="sheet" role="dialog" aria-modal="true"><span class="grab"></span>${f(sh)}<button class="btn ghost full" type="button" data-sheetclose="1">Cancelar</button></div></div>`;
+  const r = f(sh), html = typeof r === "string" ? r : r.html, fechar = (typeof r === "object" && r.fechar) || "Cancelar";
+  return `<div class="scrim" data-sheetclose="1"><div class="sheet" role="dialog" aria-modal="true"><span class="grab"></span>${html}<button class="btn ghost full" type="button" data-sheetclose="1">${fechar}</button></div></div>`;
 }
 function render() {
   const root = document.getElementById("root"), bottom = document.getElementById("bottom"), app = document.getElementById("app");
@@ -235,9 +238,10 @@ document.addEventListener("click", e => {
   const t = e.target.closest("button, .scrim");
   if (!t) return;
   const d = t.dataset;
-  if (d.sheetclose && (t.tagName === "BUTTON" || e.target === t)) { S.sheet = null; render(); return; }
+  if (d.sheetclose && (t.tagName === "BUTTON" || e.target === t)) { if (APP.aoFechar[S.sheet.t]) APP.aoFechar[S.sheet.t](S.sheet); S.sheet = null; render(); return; }
   if (t.classList.contains("scrim")) return;
   if (t.id === "as-cliente") { guardarCampos(); S.as = "cliente"; S.zoom = null; S.sheet = null; render(); return; }
+  if (t.id === "zerar-demo") { window.zerarDemo(); return; }
   if (t.id === "as-salao") { guardarCampos(); S.as = "salao"; S.sheet = null; render(); window.scrollTo(0, 0); return; }
   if (d.tab) { if (APP.abas[S.as]) APP.abas[S.as](d.tab); return; }
   for (const h of APP.cliques) if (h(t, d, e) === true) return;
@@ -249,7 +253,7 @@ document.addEventListener("change", e => {
     r.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const c = document.createElement("canvas"), s = 320, k = Math.min(img.width, img.height); c.width = c.height = s;
+        const c = document.createElement("canvas"), s = 200, k = Math.min(img.width, img.height); c.width = c.height = s;
         c.getContext("2d").drawImage(img, (img.width - k) / 2, (img.height - k) / 2, k, k, 0, 0, s, s);
         const url = c.toDataURL("image/jpeg", 0.85);
         if (APP.fotoDestino[S.as]) APP.fotoDestino[S.as](url);

@@ -128,7 +128,7 @@ function vMeus() {
       return `<article class="card bcard"><div class="row">${statusPill(b)}<span class="meta">${payText(b)}</span></div>
         <div class="bline"><span class="dbox ${off ? "dim" : ""}"><small>${WD[d.getDay()]}</small><b>${d.getDate()}</b><em>${MES[d.getMonth()].slice(0, 3)}</em></span>
           <div style="min-width:0"><h3>${esc(nomes(b.itens))}</h3><p class="meta">${b.time} – ${toHM(toMin(b.time) + mins(b.itens))}</p><div class="who">${ava(p.foto, p.nome, "xs")}com ${esc(p.nome)} · ${fmt(sum(b.itens))}</div></div></div>
-        ${b.status === "aprovado" && b.avaliacao ? `<div class="minhaav">Sua avaliação ${estrelas((S.avaliacoes.find(a => a.id === b.avaliacao) || { nota: 0 }).nota, "sm")}</div>` : ""}
+        ${b.avaliacao ? `<div class="minhaav">Sua avaliação ${estrelas((S.avaliacoes.find(a => a.id === b.avaliacao) || { nota: 0 }).nota, "sm")}</div>` : ""}
         ${podeAvaliar(b) ? `<button class="btn full avbtn" type="button" data-avaliar="${b.id}"><span class="stars-ic">★</span>Avaliar atendimento com ${esc(p.nome)}</button>` : ""}
         ${b.status === "aprovado" ? `<div class="acts"><a class="btn soft" href="${SALAO.mapa}" target="_blank" rel="noopener">Como chegar</a>${FONE_SALAO ? `<a class="btn soft" href="${wa}" target="_blank" rel="noopener">Falar no WhatsApp</a>` : ""}</div>` : ""}
         ${off ? `<div class="why"><i>!</i><span><b>${esc(b.motivo || "Não aprovado")}.</b> ${b.refund ? "Seu Pix de " + fmt(sum(b.itens)) + " foi devolvido." : "Escolha outro, sem custo."}</span></div>
@@ -139,12 +139,13 @@ function vMeus() {
     }).join("") : `<div class="empty">${S.meusTab === "prox" ? "Você ainda não tem horários marcados." : "Seus atendimentos já feitos aparecem aqui."}<button class="btn" type="button" data-tab="catalogo">Agendar agora</button></div>`}
   </section>`;
 }
-/* avaliar: só quem foi atendida; no sistema de verdade, depois do horário (ver DEMONSTRACAO em comum/dados.js) */
-const fimPassou = b => b.day < HOJE || (b.day === HOJE && toMin(b.time) + mins(b.itens) <= new Date().getHours() * 60 + new Date().getMinutes());
-const podeAvaliar = b => b.mine && b.status === "aprovado" && !b.avaliacao && (fimPassou(b) || DEMONSTRACAO);
+/* avaliar: só depois que a profissional (ou a dona) marcou o atendimento como concluído; uma vez por atendimento */
+const podeAvaliar = b => b.mine && b.status === "concluido" && !b.avaliacao;
+/* pop-up ao abrir o app: o último atendimento concluído ainda sem avaliação; "Agora não" não insiste de novo */
+const avaliacaoPendente = () => S.bookings.filter(b => podeAvaliar(b) && !b.avAdiada).sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time))[0];
 function folhaAvaliar() {
   const a = S.avDraft, b = bk(a.bid), p = pro(b.pro), tags = a.nota && a.nota <= 3 ? TAGS_RUINS : TAGS_BOAS;
-  return `<h2>Como foi com ${esc(p.nome)}?</h2><p class="meta">${esc(nomes(b.itens))} · ${dayLabel(b.day)}. Sua avaliação ajuda outras clientes e o salão.</p>
+  return `${a.popup ? `<div class="row" style="justify-content:flex-start;gap:12px">${ava(p.foto, p.nome, "md")}<span class="eyebrow">Seu último atendimento</span></div>` : ""}<h2>Como foi com ${esc(p.nome)}?</h2><p class="meta">${esc(nomes(b.itens))} · ${dayLabel(b.day)}. Sua avaliação ajuda outras clientes e o salão.</p>
     <div class="starpick" role="group" aria-label="Nota">${[1, 2, 3, 4, 5].map(k => `<button type="button" data-nota="${k}" aria-pressed="${k <= (a.nota || 0)}" aria-label="${k} ${k === 1 ? "estrela" : "estrelas"}">★</button>`).join("")}</div>
     <p class="meta" style="text-align:center;margin-top:-6px">${["Toque nas estrelas", "Muito ruim", "Ruim", "Regular", "Bom", "Excelente"][a.nota || 0]}</p>
     ${a.nota ? `<div class="chips" style="flex-wrap:wrap;margin:0;padding:0" role="group" aria-label="O que marcou">${tags.map(x => `<button class="chip" type="button" data-avtag="${x}" aria-pressed="${a.tags.includes(x)}">${x}</button>`).join("")}</div>` : ""}
@@ -186,6 +187,8 @@ function readPerfilFields() {
 /* ===== registro no motor ===== */
 APP.telas.cliente = () => {
   const v = S.view;
+  const pend = !S.sheet && ["catalogo", "meus", "perfil"].includes(v) ? avaliacaoPendente() : null;
+  if (pend) { S.avDraft = { bid: pend.id, nota: 0, tags: [], texto: "", popup: true }; S.sheet = { t: "avaliar" }; }
   const html = { catalogo: vCatalogo, agendar: vAgendar, pagar: vPagar, pix: vPix, meus: vMeus, perfil: vPerfil }[v]();
   const nav = tabs([["catalogo", "Serviços", "bag"], ["meus", "Horários", "cal"], ["perfil", "Perfil", "user"]], ["meus", "perfil"].includes(v) ? v : "catalogo");
   if (v === "agendar") return { html, bottom: bAgendar() };
@@ -199,7 +202,8 @@ APP.guardarCampos.push(readPerfilFields);
 APP.folhas.aval = sh => { const p = pro(sh.pro), l = avalDe(p.id);
   return `<div class="row" style="justify-content:flex-start;gap:12px">${ava(p.foto, p.nome, "md")}<div><h2>${esc(p.nome)}</h2><p class="meta">${esc(p.faz || "")}</p></div></div>${painelNotas(l)}
     <div class="revs">${l.slice().sort((a, b) => b.dia.localeCompare(a.dia)).map(a => cardAvaliacao(a)).join("")}</div>`; };
-APP.folhas.avaliar = () => folhaAvaliar();
+APP.folhas.avaliar = () => ({ html: folhaAvaliar(), fechar: S.avDraft && S.avDraft.popup ? "Agora não" : "Cancelar" });
+APP.aoFechar.avaliar = () => { if (S.avDraft && S.avDraft.popup) bk(S.avDraft.bid).avAdiada = true; S.avDraft = null; };
 APP.folhas.opt = sh => {
     const s = svc(sh.sid);
     return `<h2>${esc(s.nome)}</h2><p class="meta">Escolha uma opção. O preço e o tempo mudam conforme a escolha.</p>

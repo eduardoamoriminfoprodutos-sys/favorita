@@ -21,12 +21,15 @@ function receipt(b) {
 }
 
 /* ===== PAINEL DO SALÃO ===== */
+/* concluir: por enquanto a dona marca no painel. Com o acesso por colaboradora (ver docs/FUTURO-ACESSO-COLABORADORAS.md),
+   a própria profissional conclui os atendimentos dela. */
+const podeConcluir = b => b.status === "aprovado";
 function topSalao() {
   return `<div class="top"><img src="${LOGO}" alt="${esc(MARCA.nome)}"><div class="top-r"><span class="eyebrow">Painel</span><b>${dayShort(HOJE)}</b></div></div>`;
 }
 function vPedidos() {
   const list = S.bookings.filter(b => b.status === "aguardando").sort((a, b) => a.id - b.id);
-  const conf = S.bookings.filter(b => b.status === "aprovado" && b.day === HOJE);
+  const conf = S.bookings.filter(b => naAgenda(b) && b.day === HOJE);
   return `<section class="view">
     ${topSalao()}
     <div class="ink-stats"><div><b class="g">${list.length}</b><span>para aprovar</span></div><div><b>${conf.length}</b><span>confirmados hoje</span></div><div><b>${fmt0(conf.reduce((a, b) => a + sum(b.itens), 0))}</b><span>previsto hoje</span></div></div>
@@ -44,7 +47,8 @@ function vPedidos() {
 function vDetalhe() {
   const b = bk(S.detail), wa = "https://wa.me/55" + b.fone.replace(/\D/g, ""), nome1 = b.nome.split(" ")[0];
   const m = t => wa + "?text=" + encodeURIComponent(t);
-  const status = b.status === "aprovado" ? `<div class="status-box ok">✓ Agendamento confirmado</div>`
+  const status = b.status === "concluido" ? `<div class="status-box ok">✓ Atendimento concluído${b.concluidoPor ? " por " + esc(b.concluidoPor) : ""}</div>`
+    : b.status === "aprovado" ? `<div class="status-box ok">✓ Agendamento confirmado</div>`
     : b.status === "reprovado" ? `<div class="status-box bad">Não aprovado${b.motivo ? ": " + esc(b.motivo) : ""}.${b.refund ? " Pix devolvido à cliente." : ""}</div>`
     : `<div class="status-box warn">Esperando a sua aprovação</div>`;
   return `<section class="view">
@@ -75,20 +79,21 @@ function vDetalhe() {
       <p class="meta">Abre o WhatsApp com a mensagem pronta para ${esc(b.fone)}.</p></div>
     <div class="card sec hist"><span class="eyebrow">Histórico</span>${b.hist.slice().reverse().map(h => `<div class="kv"><span>${h[0]} · ${h[1]}</span><span>${esc(h[2])}</span></div>`).join("")}</div>
     ${b.status === "aguardando" ? `<div class="obtns"><button class="btn bad" type="button" data-rej="${b.id}">Reprovar</button><button class="btn" type="button" data-apr="${b.id}">Aprovar</button></div>` : ""}
+    ${podeConcluir(b) ? `<button class="btn full btn-ok" type="button" data-concluir="${b.id}">${IC.check}Concluir atendimento</button><p class="meta" style="text-align:center">Depois de concluído, a cliente recebe o convite para avaliar.</p>` : ""}
   </section>`;
 }
 function livreMin(day, proId) {
   const ps = proId === "todas" ? PROS : [pro(proId)];
   if (!aberto(day) && day !== HOJE) return 0;
   return ps.reduce((acc, p) => {
-    const ocup = S.bookings.filter(b => b.pro === p.id && b.day === day && (b.status === "aprovado" || b.status === "aguardando")).reduce((a, b) => a + mins(b.itens), 0);
+    const ocup = S.bookings.filter(b => b.pro === p.id && b.day === day && (naAgenda(b) || b.status === "aguardando")).reduce((a, b) => a + mins(b.itens), 0);
     return acc + Math.max(0, toMin(p.fim) - toMin(p.ini) - ocup);
   }, 0);
 }
 function vAgenda() {
   const dias = weekDays(0);
   const day = S.aDay;
-  let list = S.bookings.filter(b => b.status === "aprovado" && b.day === day);
+  let list = S.bookings.filter(b => naAgenda(b) && b.day === day);
   if (S.aPro !== "todas") list = list.filter(b => b.pro === S.aPro);
   list.sort((a, b) => a.time.localeCompare(b.time));
   const rows = []; list.forEach((b, i) => {
@@ -98,13 +103,13 @@ function vAgenda() {
   });
   return `<section class="view">
     <div class="row pad-x" style="margin-top:12px;align-items:baseline"><h1>Agenda</h1><span class="meta">${MES[dOf(day).getMonth()][0].toUpperCase() + MES[dOf(day).getMonth()].slice(1)}</span></div>
-    <div class="card" style="padding:10px"><div class="week" role="group">${dias.map(k => { const d = dOf(k), tem = S.bookings.some(b => b.day === k && b.status === "aprovado");
+    <div class="card" style="padding:10px"><div class="week" role="group">${dias.map(k => { const d = dOf(k), tem = S.bookings.some(b => b.day === k && naAgenda(b));
       return `<button class="wd" type="button" data-aday="${k}" ${aberto(k) ? "" : "disabled"} aria-pressed="${k === day}">${WD[d.getDay()]}<b>${d.getDate()}</b><i class="${tem ? "on" : ""}"></i></button>`; }).join("")}</div></div>
     <div class="gmini"><div><span>Atendimentos</span><b>${list.length}</b></div><div><span>Previsto</span><b>${fmt0(list.reduce((a, b) => a + sum(b.itens), 0))}</b></div><div><span>${S.aPro === "todas" ? "Livre / prof." : "Livre"}</span><b>${dur(Math.round(livreMin(day, S.aPro) / (S.aPro === "todas" ? Math.max(1, PROS.length) : 1) / 15) * 15).replace(" min", "min")}</b></div></div>
     <div class="chips" role="group" aria-label="Filtrar por profissional"><button class="chip" type="button" data-apro="todas" aria-pressed="${S.aPro === "todas"}">Todas</button>${PROS.map(p => `<button class="chip" type="button" data-apro="${p.id}" aria-pressed="${S.aPro === p.id}"><span class="dot" style="background:${p.cor}"></span>${esc(p.nome)}</button>`).join("")}</div>
     ${rows.length ? rows.map(r => r.gap
       ? `<div class="tl"><time>${r.de}</time><div class="gap"><span>Livre até ${r.ate}</span><button class="link" type="button" data-encaixe="${r.de}">+ Encaixe</button></div></div>`
-      : `<div class="tl"><time>${r.time}<small>${toHM(toMin(r.time) + mins(r.itens))}</small></time><button class="card acard" type="button" data-open="${r.id}"><span class="bar3" style="background:${pro(r.pro).cor}"></span><span style="min-width:0"><h3>${esc(r.nome)}</h3><p>${esc(nomes(r.itens))} · ${esc(pro(r.pro).nome)}</p><span class="pill ${r.pay === "pix" ? "ok" : "n"}">${r.pay === "pix" ? "Pix pago" : payWord(r)} · ${fmt0(sum(r.itens))}</span></span>${ava(pro(r.pro).foto, pro(r.pro).nome, "sm")}</button></div>`).join("")
+      : `<div class="tl"><time>${r.time}<small>${toHM(toMin(r.time) + mins(r.itens))}</small></time><div class="stack" style="gap:6px"><button class="card acard ${r.status === "concluido" ? "feito" : ""}" type="button" data-open="${r.id}"><span class="bar3" style="background:${pro(r.pro).cor}"></span><span style="min-width:0"><h3>${esc(r.nome)}</h3><p>${esc(nomes(r.itens))} · ${esc(pro(r.pro).nome)}</p><span class="pill ${r.pay === "pix" ? "ok" : "n"}">${r.pay === "pix" ? "Pix pago" : payWord(r)} · ${fmt0(sum(r.itens))}</span></span>${ava(pro(r.pro).foto, pro(r.pro).nome, "sm")}</button>${r.status === "concluido" ? `<span class="feito-tag">${IC.check}Concluído</span>` : podeConcluir(r) ? `<button class="btn soft btn-concluir" type="button" data-concluir="${r.id}">${IC.check}Concluir atendimento</button>` : ""}</div></div>`).join("")
       : `<div class="empty">Nenhum atendimento confirmado nesse dia${S.aPro !== "todas" ? " para " + esc(pro(S.aPro).nome) : ""}.</div>`}
   </section>`;
 }
@@ -194,7 +199,7 @@ function vEquipe() {
     <p class="meta pad-x">Toque numa profissional para ver as avaliações das clientes, o desempenho e o acompanhamento (PDI).</p>
     ${atencao.map(p => { const D = desempenho(p); return `<button class="alerta" type="button" data-proview="${p.id}"><i>!</i><span><b>Atenção com ${esc(p.nome)}</b>${D.neg} ${D.neg === 1 ? "avaliação ruim" : "avaliações ruins"} nos últimos 30 dias · nota recente ${nota1(D.m30)}</span><em>Ver →</em></button>`; }).join("")}
     <button class="btn full" type="button" data-proedit="novo">+ Adicionar profissional</button>
-    ${PROS.length ? `<div class="tgrid">${PROS.map(p => { const n = S.bookings.filter(b => b.pro === p.id && b.status === "aprovado" && b.day === HOJE).length, D = desempenho(p);
+    ${PROS.length ? `<div class="tgrid">${PROS.map(p => { const n = S.bookings.filter(b => b.pro === p.id && naAgenda(b) && b.day === HOJE).length, D = desempenho(p);
       return `<button class="card tcard ${D.alerta ? "warn" : ""}" type="button" data-proview="${p.id}">${D.alerta ? `<span class="tflag">Atenção</span>` : ""}${ava(p.foto, p.nome, "lg")}<b><span class="dot" style="background:${p.cor};margin-right:6px"></span>${esc(p.nome)}</b>${resumoNota(p)}<small>${esc(p.faz || p.cats.join(", "))}</small><span class="meta" style="color:var(--gold);font-weight:600">${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h · ${n} hoje</span></button>`; }).join("")}</div>`
       : `<div class="empty">Nenhuma profissional cadastrada. Adicione a primeira para abrir a agenda.</div>`}
   </section>`;
@@ -293,6 +298,11 @@ APP.folhas.caixa = sh => {
       <button class="btn-gold" type="button" id="caixa-ok">${IC.lock}Confirmar fechamento</button>`;
 };
 APP.cliques.push((t, d, e) => {
+  if (d.concluir) {
+    const b = bk(+d.concluir); if (!podeConcluir(b)) return true;
+    b.status = "concluido"; b.concluidoPor = "Dona"; b.hist.push([hhmm(), "Dona", "Concluiu o atendimento"]);
+    toast("Atendimento concluído. A cliente vai receber o convite para avaliar."); render(); return true;
+  }
   if (d.proview) { S.proView = d.proview; S.avFiltro = "todas"; S.pdiDraft = null; render(); window.scrollTo(0, 0); return true; }
   if (d.proviewfechar) { S.proView = null; render(); window.scrollTo(0, 0); return true; }
   if (d.avf) { S.avFiltro = d.avf; render(); return true; }

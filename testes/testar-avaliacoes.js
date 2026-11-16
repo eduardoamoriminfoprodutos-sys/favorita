@@ -26,7 +26,21 @@ const { chromium } = require('playwright');
   await p.click('[data-pay="salao"]'); await p.click('#enviar');
   await p.click('#as-salao'); const id = await p.evaluate(() => S.bookings.find(b => b.mine).id); await p.click(`[data-apr="${id}"]`);
   await p.click('#as-cliente'); await p.click('[data-tab="meus"]');
-  ok(!!(await p.$(`[data-avaliar="${id}"]`)), 'aparece "Avaliar atendimento" no horário confirmado');
+  ok(!(await p.$(`[data-avaliar="${id}"]`)) && !(await p.$('.sheet')), 'confirmado ainda não pede avaliação (atendimento não aconteceu)');
+  // a dona conclui o atendimento
+  await p.click('#as-salao'); await p.click('[data-tab="agenda"]');
+  const dia = await p.evaluate(i => S.bookings.find(b => b.id === i).day, id); await p.click(`[data-aday="${dia}"]`);
+  ok(!!(await p.$(`[data-concluir="${id}"]`)), 'agenda tem "Concluir atendimento"');
+  await p.click(`[data-concluir="${id}"]`); ok((await toast()).includes('convite para avaliar'), 'atendimento concluído');
+  await shot('av-0-concluir');
+  // cliente abre o app: pop-up de avaliação, não obrigatório
+  await p.click('#as-cliente');
+  ok(!!(await p.$('.sheet')) && (await p.textContent('.sheet')).includes('Seu último atendimento'), 'pop-up de avaliação aparece assim que a cliente volta ao app');
+  ok((await p.textContent('.sheet button[data-sheetclose="1"]')).trim() === 'Agora não', 'pop-up tem "Agora não"');
+  await shot('av-1b-popup');
+  await p.click('.sheet button[data-sheetclose="1"]');
+  await p.click('[data-tab="meus"]'); ok(!(await p.$('.sheet')), '"Agora não" não insiste de novo');
+  ok(!!(await p.$(`[data-avaliar="${id}"]`)), 'ainda dá para avaliar por Meus horários');
   await p.click(`[data-avaliar="${id}"]`);
   ok(await p.$eval('#av-enviar', e => e.disabled), 'enviar fica bloqueado até escolher a nota');
   await p.click('[data-nota="2"]'); ok(!!(await p.$('[data-avtag="Atrasou"]')), 'nota baixa mostra etiquetas de reclamação');
