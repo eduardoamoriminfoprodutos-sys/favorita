@@ -31,10 +31,14 @@ Depois de ligar o GitHub Pages (ver abaixo):
 |---|---|
 | `marca.js` | **A marca do salão**: nome, logo, cores, WhatsApp e endereço. É o único arquivo que muda de um salão para outro (junto com o `logo.png`). |
 | `logo.png` | Logo escura, fundo transparente (usada no app). `logo-clara.png` é a versão branca. |
-| `app/app.js` | Toda a lógica: catálogo e sacola, agendamento, Pix ou pagamento no salão, aprovação, agenda, financeiro, serviços, categorias e equipe. |
-| `app/app.css` | Todo o visual (redesign do Claude Design). As cores são variáveis em `:root`. |
+| `cliente/` | **App da cliente**: `index.html` + `cliente.js` (catálogo e sacola, agendar, confirmar e pagar, Pix, meus horários, perfil). |
+| `salao/` | **Painel do salão (dona)**: `index.html` + `salao.js` (pedidos, resumo com comprovante, agenda, financeiro e caixa, serviços e categorias, equipe). |
+| `comum/nucleo.js` | O que os dois usam: datas e dinheiro, dados de exemplo, estado, regras de horário, ícones, componentes e o motor de tela. |
+| `comum/dados.js` | **Única camada de dados.** Hoje grava no navegador; no sistema de verdade passa a falar com a API da VPS (ver `docs/ENTREGA-VPS.md`). |
+| `comum/estilos.css` | Todo o visual (redesign do Claude Design). As cores são variáveis em `:root`. |
+| `docs/ENTREGA-VPS.md` | **O que fazer para pôr no ar sincronizado pela VPS**: ambiente exclusivo da Favorita, banco, rotas da API, Pix e sincronização. |
 | `index.html` | Capa da apresentação. |
-| `cliente/`, `salao/`, `demo/` | As três entradas. Cada uma só carrega `marca.js` + `app/` e diz qual modo abrir. |
+| `demo/` | Os dois apps juntos, com o botão "Ver como" (para apresentar). |
 | `testes/testar.js` | 29 verificações de ponta a ponta na `demo/`. |
 | `testes/testar-abas.js` | Verifica capa, app e painel em abas separadas conversando entre si. |
 | `prints/` | Prints de todas as telas (`prints/gerar-prints.js` refaz). |
@@ -46,7 +50,7 @@ Depois de ligar o GitHub Pages (ver abaixo):
 1. Copie este repositório para um novo (ex.: `salao-nome-da-marca`).
 2. Troque o `logo.png` pela logo do salão (escura, fundo transparente, ~640 px de largura).
 3. Em `marca.js`, troque `chave`, `nome`, `nomeCompleto`, `salao.fone`, `salao.mapa` e as `cores` (tirando da paleta da logo; o próprio arquivo traz um exemplo).
-4. Troque os serviços, profissionais e categorias de exemplo no começo de `app/app.js` pelos do salão.
+4. Troque os serviços, profissionais e categorias de exemplo no começo de `comum/nucleo.js` pelos do salão (no sistema de verdade eles vêm do banco).
 5. Ligue o GitHub Pages do repositório novo.
 
 ## Rodar os testes
