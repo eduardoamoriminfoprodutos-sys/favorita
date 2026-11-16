@@ -388,7 +388,8 @@ app.post('/pix/criar', { onRequest: exigirCliente, bodyLimit: 4096 }, async (req
     }, 'ag-' + ag.id + '-' + Date.now());
     if (!r.ok || !r.j.id) { console.error('[pix-criar]', r.status, r.j && r.j.message); return reply.code(502).send({ error: 'falha_pix' }); }
     pay = r.j;
-    await pool.query('insert into pix_cobrancas (mp_id, agendamento_id, valor_centavos, status, teste) values ($1,$2,$3,$4,$5) on conflict (mp_id) do nothing', [String(pay.id), ag.id, ag.total_centavos, pay.status || 'pending', PIX_TESTE]);
+    const ins = await pool.query('insert into pix_cobrancas (mp_id, agendamento_id, valor_centavos, status, teste) values ($1,$2,$3,$4,$5) on conflict (mp_id) do nothing', [String(pay.id), ag.id, ag.total_centavos, pay.status || 'pending', PIX_TESTE]);
+    if (!ins.rowCount) { console.error('[pix-criar] número de pagamento repetido', pay.id); return reply.code(502).send({ error: 'falha_pix' }); }
     await pool.query('update agendamentos set mp_payment_id = $2 where id = $1', [ag.id, String(pay.id)]);
   }
   const tx = (pay.point_of_interaction && pay.point_of_interaction.transaction_data) || {};
@@ -414,7 +415,7 @@ app.post('/pix/webhook', { bodyLimit: 64 * 1024 }, async (req, reply) => {
 });
 
 /* ---- Mercado Pago de mentira (só sem MP_ACCESS_TOKEN): nenhum dinheiro de verdade passa por aqui ---- */
-const mpTeste = { n: 7000000000, pag: {} };
+const mpTeste = { n: Date.now(), pag: {} };   // número único mesmo depois de reiniciar (nunca repete o de um Pix de teste antigo)
 const soInterno = req => !req.headers['x-real-ip'] && /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.ip);
 if (PIX_TESTE) {
   app.post('/mp-teste/v1/payments', async (req, reply) => {
