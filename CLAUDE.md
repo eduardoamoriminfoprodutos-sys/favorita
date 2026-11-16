@@ -17,6 +17,11 @@ Sistema de agendamento para salões (app da cliente + painel do salão), hoje co
 - Dinheiro e preço, no sistema de verdade, são **calculados no servidor**, nunca no celular da cliente.
 - Nada de senha, token ou chave do Mercado Pago no repositório.
 
+## Este salão é independente
+
+- **Este repositório é só do Favorita.** O sistema nasceu igual ao do Studio Mica Araujo (repositório `mica_araujo`), mas agora cada cliente evolui separado: pedido do Favorita muda **só aqui**. Nunca copie código daqui para o `mica_araujo` nem de lá para cá, a não ser que o Eduardo peça com essas palavras.
+- **Artefato próprio** (demonstração para apresentar, em dois aparelhos): https://claude.ai/artifact/JzTrjDK3d5cLRxv1BEYacy. Para atualizar depois de mudar o app: `python3 ferramentas/montar-artefato.py <saída.html>` (monta o arquivo único só a partir deste repositório) e republique **nesse mesmo link**. Nunca publique o artefato de um salão no link do outro.
+
 ## Tarefa atual
 
 **Colocar no ar sincronizado pela VPS, em ambiente exclusivo da Favorita: siga `docs/ENTREGA-VPS.md`.**

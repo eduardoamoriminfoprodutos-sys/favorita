@@ -37,6 +37,7 @@ Depois de ligar o GitHub Pages (ver abaixo):
 | `comum/dados.js` | **Única camada de dados.** Hoje grava no navegador; no sistema de verdade passa a falar com a API da VPS (ver `docs/ENTREGA-VPS.md`). |
 | `comum/estilos.css` | Todo o visual (redesign do Claude Design). As cores são variáveis em `:root`. |
 | `docs/FUTURO-ACESSO-COLABORADORAS.md` | **Proposta futura (não implementada):** login de cada profissional com limites (sem Financeiro, Equipe e cadastros), concluir os próprios atendimentos e "Minhas avaliações". Para a negociação. |
+| `ferramentas/montar-artefato.py` | Monta o arquivo único da demonstração deste salão para publicar no artefato próprio dele (https://claude.ai/artifact/JzTrjDK3d5cLRxv1BEYacy). |
 | `docs/ENTREGA-VPS.md` | **O que fazer para pôr no ar sincronizado pela VPS**: ambiente exclusivo da Favorita, banco, rotas da API, Pix e sincronização. |
 | `index.html` | Capa da apresentação. |
 | `demo/` | Os dois apps juntos, com o botão "Ver como" (para apresentar). |
