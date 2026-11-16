@@ -3,6 +3,15 @@
 /* APP DA CLIENTE: catálogo e sacola, agendar (profissional, dia, horário), confirmar e pagar (Pix ou no salão),
    tela do Pix, meus horários e perfil. Usa comum/nucleo.js e comum/dados.js. */
 /* ===== APP DA CLIENTE ===== */
+
+/* Falar com o salão no WhatsApp, com mensagem pronta (o número vem de marca.js) */
+const waSalao = msg => "https://wa.me/55" + SALAO.fone + (msg ? "?text=" + encodeURIComponent(msg) : "");
+const IC_WA = sv('<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/>');
+const btnWa = (msg, texto = "Chamar no WhatsApp", extra = "") => `<a class="btn wa-btn ${extra}" href="${waSalao(msg)}" target="_blank" rel="noopener">${IC_WA}${texto}</a>`;
+const msgOla = assunto => "Olá! Vim pelo app " + MARCA.nome + " e " + assunto;
+function cardWhats(titulo, texto, msg) {
+  return `<div class="card wa-card"><span class="wa-ic">${IC_WA}</span><div style="min-width:0"><h3>${titulo}</h3><p class="meta">${texto}</p></div>${btnWa(msg, "Chamar no WhatsApp", "full")}</div>`;
+}
 function vCatalogo() {
   if (!CATS.includes(S.cat)) S.cat = CATS[0];
   const list = SERVICES.filter(s => (s.disp === "disponivel" || s.disp === "pausado") && s.cat === S.cat).sort((a, b) => a.disp.localeCompare(b.disp));
@@ -18,7 +27,8 @@ function vCatalogo() {
         <div style="min-width:0"><h3>${esc(s.nome)}${on && I.op ? `<span class="optag">${esc(I.op)}</span>` : ""}${off ? `<span class="tag-off">Indisponível hoje</span>` : ""}</h3><p>${esc(s.desc)}</p>
           <div class="smeta"><span class="ttag">${on ? dur(I.min) : (s.opcoes.length ? "a partir de " + dur(minDur(s)) : dur(s.min))}</span><b>${on ? fmt(I.preco) : (s.opcoes.length ? "a partir de " + fmt(desde(s)) : fmt(s.preco))}</b></div></div>
         <span class="addc" aria-hidden="true">${on ? "✓" : "+"}</span></button>`;
-    }).join("") : `<div class="empty">Nenhum serviço nesta categoria por enquanto.</div>`}
+    }).join("") : `<div class="empty">Nenhum serviço nesta categoria por enquanto.${btnWa(msgOla("queria saber sobre serviços de " + S.cat.toLowerCase() + "."), "Perguntar ao salão")}</div>`}
+    ${cardWhats("Não encontrou o que procura?", "Fale direto com o salão: tiramos dúvidas e combinamos serviços que não estão no app.", msgOla("queria saber sobre um serviço que não encontrei."))}
     <p class="meta pad-x">Serviços, preços e profissionais de exemplo <span class="tag-ex">Exemplo</span></p>
   </section>`;
 }
@@ -41,14 +51,14 @@ function vAgendar() {
       ${cands.length ? `<div class="hs" role="group" aria-label="Profissional">
         <button class="pcard" type="button" data-pro="qualquer" aria-pressed="${S.pro === "qualquer"}"><span class="ck">✓</span><span class="anyico">✦</span><b>Qualquer uma</b><span class="meta">1ª livre</span><div class="skills"><span class="n">Mais rápido</span></div></button>
         ${cands.map(p => `<button class="pcard" type="button" data-pro="${p.id}" aria-pressed="${S.pro === p.id}"><span class="ck">✓</span>${ava(p.foto, p.nome, "lg")}<b>${esc(p.nome)}</b><span class="hr">${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h</span><div class="skills">${skills(p).slice(0, 3).map(x => `<span>${esc(x)}</span>`).join("")}</div></button>`).join("")}
-      </div>` : `<div class="empty">Nenhuma profissional faz todos esses serviços juntos. Separe em dois agendamentos.</div>`}
+      </div>` : `<div class="empty">Nenhuma profissional faz todos esses serviços juntos. Separe em dois agendamentos ou combine com o salão.${btnWa(msgOla("queria agendar " + nomes(S.cart) + " juntos."), "Combinar no WhatsApp")}</div>`}
     </div>
     <div class="card sec"><div class="row"><span class="eyebrow">Dia</span><div class="monthnav"><button type="button" data-wk="-1" ${S.week <= 0 ? "disabled" : ""} aria-label="Semana anterior">‹</button>${mes[0].toUpperCase() + mes.slice(1)}<button type="button" data-wk="1" ${S.week >= 3 ? "disabled" : ""} aria-label="Próxima semana">›</button></div></div>
       <div class="week" role="group">${dias.map(k => { const d = dOf(k), ok = aberto(k), tem = ok && cands.length && slots(k).some(s => s.free);
         return `<button class="wd" type="button" data-day="${k}" ${ok ? "" : "disabled"} aria-pressed="${k === S.day}">${WD[d.getDay()]}<b>${d.getDate()}</b><i class="${tem ? "on" : ""}"></i></button>`; }).join("")}</div>
     </div>
     <div class="card sec"><div class="row"><span class="eyebrow">Horário</span><div class="segm mini" role="group"><button type="button" data-turno="manha" aria-pressed="${S.turno === "manha"}">Manhã</button><button type="button" data-turno="tarde" aria-pressed="${S.turno === "tarde"}">Tarde</button></div></div>
-      ${cands.length ? (sl.some(s => s.free) ? `<div class="times" role="group">${sl.map(s => `<button class="time" type="button" data-time="${s.t}" ${s.free ? "" : "disabled"} aria-pressed="${S.time === s.t}">${s.t}</button>`).join("")}</div>` : `<div class="empty" style="padding:18px">Sem horário livre ${S.turno === "manha" ? "de manhã" : "à tarde"} nesse dia. Tente o outro turno ou outro dia.</div>`) : ""}
+      ${cands.length ? (sl.some(s => s.free) ? `<div class="times" role="group">${sl.map(s => `<button class="time" type="button" data-time="${s.t}" ${s.free ? "" : "disabled"} aria-pressed="${S.time === s.t}">${s.t}</button>`).join("")}</div>` : `<div class="empty" style="padding:18px">Sem horário livre ${S.turno === "manha" ? "de manhã" : "à tarde"} nesse dia. Tente o outro turno ou outro dia, ou peça um encaixe ao salão.${btnWa(msgOla("queria um encaixe para " + nomes(S.cart) + " em " + dayLabel(S.day) + "."), "Pedir encaixe")}</div>`) : ""}
     </div>
   </section>`;
 }
@@ -140,6 +150,7 @@ function vPerfil() {
       <label class="field">Endereço<input type="text" id="p-end" autocomplete="street-address" value="${esc(P.end)}" placeholder="Rua, número e bairro"></label>
     </div>
     <button class="btn full" type="button" id="salvar-perfil">Salvar perfil</button>
+    ${cardWhats("Falar com o salão", "Dúvidas, remarcação ou um pedido especial? Chame a gente no WhatsApp.", msgOla("tenho uma dúvida."))}
   </section>`;
 }
 function drawQR() {

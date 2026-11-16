@@ -41,6 +41,7 @@ Depois de ligar o GitHub Pages (ver abaixo):
 | `demo/` | Os dois apps juntos, com o botão "Ver como" (para apresentar). |
 | `testes/testar.js` | 29 verificações de ponta a ponta na `demo/`. |
 | `testes/testar-abas.js` | Verifica capa, app e painel em abas separadas conversando entre si. |
+| `testes/testar-whatsapp.js` | Confere os atalhos de WhatsApp do salão no app da cliente. |
 | `prints/` | Prints de todas as telas (`prints/gerar-prints.js` refaz). |
 | `redesign-claude-design/`, `Mobile app design project.zip` | O redesign original do Claude Design (referência visual). |
 | `design-original-stitch/` | O primeiro rascunho, feito no Google Stitch. |
@@ -60,6 +61,7 @@ python3 -m http.server 8000          # na raiz do repositório
 npx playwright install chromium      # uma vez
 node testes/testar.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg
 node testes/testar-abas.js http://localhost:8000/ pasta-para-prints
+node testes/testar-whatsapp.js http://localhost:8000/cliente/ pasta-para-prints
 node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg prints
 ```
 
@@ -69,6 +71,7 @@ node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jp
 - **Todo agendamento passa pela aprovação da dona.** Pix só chega para ela depois de pago; se reprovar, o Pix volta para a cliente.
 - **Ao aprovar, o pedido vira um lançamento no Financeiro.** A dona fecha o caixa do dia por lá.
 - A cliente tem perfil (foto, nome, WhatsApp, endereço) e pode deixar observação no agendamento.
+- **Falar com o salão no WhatsApp** (número em `marca.js`): card "Não encontrou o que procura?" no fim do catálogo, atalho no perfil e oferta de combinar/pedir encaixe quando não há serviço, profissional ou horário.
 - A confirmar com a dona: cartão e dinheiro entram no Financeiro na aprovação ou só quando o atendimento for concluído.
 
 ## O que falta para virar sistema de verdade

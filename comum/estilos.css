@@ -26,6 +26,7 @@ img { max-width: 100%; }
   --ok: #2F7A55; --ok-bg: #E3F0E8;
   --bad: #B5453A; --bad-bg: #F7E4E0; --bad-soft: #FBF1EE;
   --pix: #2B9C8F; --pix-bg: #E3F3F1;
+  --whats: #1F9E55; --whats-bg: #E4F4EA;
   --sh-card: 0 1px 2px rgba(33,27,24,.04), 0 10px 24px -14px rgba(33,27,24,.18);
   --sh-gold: 0 16px 32px -12px rgba(169,124,54,.7);
   --font: "Montserrat", "Segoe UI", system-ui, sans-serif;
@@ -375,3 +376,12 @@ nav.tabs button[aria-current="page"] { color: var(--ink); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .spin, .sheet, .float { animation: none; } }
 
 #app:not(:has(.demo)) { padding-top: 10px; }
+
+/* falar com o salão no WhatsApp */
+.wa-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; align-items: center; }
+.wa-card .btn { grid-column: 1 / -1; }
+.wa-ic { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--whats-bg); color: var(--whats); }
+.wa-ic svg { width: 22px; height: 22px; }
+.wa-btn { background: var(--whats); color: #FFFFFF; }
+.wa-btn svg { width: 18px; height: 18px; }
+.empty .wa-btn { align-self: center; padding: 11px 16px; font-size: 13px; }
