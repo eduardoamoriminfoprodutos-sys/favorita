@@ -1,11 +1,11 @@
-// Teste de ponta a ponta do protótipo v3 (redesign). Uso: node teste-v3.js <pasta com render.html e foto-teste.jpg>
+// Teste de ponta a ponta da página demo/ (cliente + salão). Uso: node testar.js <URL da demo/> <foto.jpg>
 const { chromium } = require('playwright');
 (async () => {
-  const S = process.argv[2];
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const [URL, FOTO] = process.argv.slice(2);
+  const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 390, height: 844 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
-  await p.goto('file://' + S + '/render.html'); await p.waitForTimeout(1200);
+  await p.goto(URL); await p.waitForTimeout(1200);
   const toast = async () => (await p.textContent('#toast')).trim();
   const ok = (cond, msg) => console.log((cond ? 'OK   ' : 'FALHA') + ' ' + msg);
 
@@ -35,7 +35,7 @@ const { chromium } = require('playwright');
   await p.click('#enviar'); ok(!!(await p.$('#simular-pix')), 'abre a tela do Pix');
   await p.click('#simular-pix'); ok((await p.textContent('#root')).includes('Aguardando salão'), 'Meus horários: aguardando salão');
   // perfil com foto
-  await p.click('[data-tab="perfil"]'); await p.setInputFiles('#foto-input', S + '/foto-teste.jpg'); await p.waitForTimeout(400);
+  await p.click('[data-tab="perfil"]'); await p.setInputFiles('#foto-input', FOTO); await p.waitForTimeout(400);
   ok(await p.inputValue('#p-nome') === 'Elika de Brito', 'perfil mantém nome após foto');
   // segundo pedido pago no salão
   await p.click('[data-tab="catalogo"]'); await p.click('[data-cat="Unhas"]'); await p.click('[data-svc="6"]'); await p.click('#go-agendar');

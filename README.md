@@ -1,55 +1,63 @@
-# Favorita Beleza e Bem-Estar · Sistema de agendamento
+# Sistema de agendamento para salões · Favorita
 
-Protótipo do app de agendamento do salão Favorita (app da cliente + painel da dona), já no **redesign feito no Claude Design**, e prints de todas as telas.
+App da cliente + painel do salão, na marca **Favorita Beleza e Bem-Estar**. Hoje é uma **demonstração que roda só no navegador** (sem servidor): serve para apresentar à dona e validar o fluxo. O mesmo sistema vai ser usado em outros salões trocando só a marca.
 
 > Serviços, preços, profissionais, clientes, lançamentos e o comprovante do Pix são **dados de exemplo**.
 
-## Pastas
+## Links (GitHub Pages)
 
-- `prototipo/index.html`: o protótipo clicável (abre no navegador; botão no topo alterna Cliente e Salão). `prototipo/testar.js` roda 29 testes de ponta a ponta.
-- `prints/cliente/` e `prints/salao/`: cada tela em dois arquivos, `NN-nome.png` (tela do celular, 390 × 844, alta resolução) e `NN-nome-pagina-inteira.png`. `prints/gerar-prints.js` refaz todos.
-- `Mobile app design project.zip`: o pacote do redesign exportado do Claude Design (handoff com README de tokens).
-- `redesign-claude-design/`: as 7 telas do redesign, para comparar com o protótipo.
-- `design-original-stitch/`: as 4 telas do primeiro rascunho, no Google Stitch.
+Depois de ligar o GitHub Pages (ver abaixo):
 
-A versão anterior dos prints (antes do redesign) continua no histórico do Git.
-
-## App da cliente (13 telas)
-
-| Arquivo | Tela |
+| Página | Endereço |
 |---|---|
-| `01-perfil-vazio.png` | Perfil sem dados |
-| `02-perfil-com-foto.png` | Perfil com foto e dados |
-| `03-catalogo.png` | Catálogo: saudação, categorias, serviços |
-| `04-escolher-opcao.png` | Folha para escolher a opção (Selagem curto/médio/longo) |
-| `05-sacola-flutuante.png` | Sacola flutuante dourada com 2 serviços |
-| `06-catalogo-unhas.png` | Catálogo, categoria Unhas |
-| `07-agendar.png` | Agendar: stepper, sacola, profissional, dia, horário |
-| `08-agendar-escolhido.png` | Agendar com Ana, dia e horário escolhidos |
-| `09-confirmar-pix.png` | Confirmar: resumo, pagamento Pix, observação |
-| `10-confirmar-no-salao.png` | Confirmar: no salão, cartão ou dinheiro |
-| `11-pix.png` | Pix: valor, QR, copia e cola |
-| `12-meus-horarios-aguardando.png` | Meus horários: aguardando salão |
-| `13-meus-horarios-respostas.png` | Meus horários: confirmado e não aprovado |
+| Capa da apresentação | `https://eduardoamoriminfoprodutos-sys.github.io/favorita/` |
+| App da cliente | `https://eduardoamoriminfoprodutos-sys.github.io/favorita/cliente/` |
+| Painel do salão | `https://eduardoamoriminfoprodutos-sys.github.io/favorita/salao/` |
+| Os dois na mesma tela | `https://eduardoamoriminfoprodutos-sys.github.io/favorita/demo/` |
 
-## Painel do salão (14 telas)
+**Como apresentar:** abra o app da cliente e o painel do salão em duas abas do mesmo aparelho. O pedido feito no app aparece no painel na hora, e a resposta do salão aparece para a cliente. Os dados ficam guardados no próprio navegador; "Zerar demonstração", na capa, volta tudo ao início.
 
-| Arquivo | Tela |
+### Ligar o GitHub Pages
+
+1. No repositório: **Settings → Pages**.
+2. Em **Source**, escolha **Deploy from a branch**; em **Branch**, `main` e pasta `/ (root)`; **Save**.
+3. Em 1 ou 2 minutos o endereço aparece no topo da mesma página.
+
+**Atenção:** em conta gratuita do GitHub, o Pages só funciona com repositório **público**. Este repositório é privado, então para publicar é preciso **ou** deixar o repositório público (não há senha nem chave aqui, só o protótipo, a marca e os prints) **ou** ter o plano GitHub Pro.
+
+## Como o código está organizado
+
+| Arquivo | O que é |
 |---|---|
-| `01-pedidos.png` | Pedidos: números do dia e pedidos para aprovar |
-| `02-resumo-do-pedido.png` | Resumo do pedido: cliente, serviço, observação, pagamento, comprovante, mensagens, histórico |
-| `03-comprovante-zoom.png` | Comprovante do Pix com zoom |
-| `04-reprovar-motivo.png` | Reprovar: folha com motivos |
-| `05-pedido-aprovado.png` | Pedido aprovado |
-| `06-agenda.png` | Agenda: dias, números, filtro por profissional, linha do tempo |
-| `07-financeiro.png` | Financeiro: faturamento do dia, formas, lançamentos |
-| `08-fechar-caixa.png` | Fechar caixa: resumo por forma |
-| `09-caixa-fechado.png` | Caixa fechado |
-| `10-servicos.png` | Serviços por categoria |
-| `11-editar-servico.png` | Editar serviço com opções |
-| `12-categorias.png` | Categorias |
-| `13-equipe.png` | Equipe |
-| `14-editar-profissional.png` | Editar profissional: foto, especialidades, horário, cor na agenda |
+| `marca.js` | **A marca do salão**: nome, logo, cores, WhatsApp e endereço. É o único arquivo que muda de um salão para outro (junto com o `logo.png`). |
+| `logo.png` | Logo escura, fundo transparente (usada no app). `logo-clara.png` é a versão branca. |
+| `app/app.js` | Toda a lógica: catálogo e sacola, agendamento, Pix ou pagamento no salão, aprovação, agenda, financeiro, serviços, categorias e equipe. |
+| `app/app.css` | Todo o visual (redesign do Claude Design). As cores são variáveis em `:root`. |
+| `index.html` | Capa da apresentação. |
+| `cliente/`, `salao/`, `demo/` | As três entradas. Cada uma só carrega `marca.js` + `app/` e diz qual modo abrir. |
+| `testes/testar.js` | 29 verificações de ponta a ponta na `demo/`. |
+| `testes/testar-abas.js` | Verifica capa, app e painel em abas separadas conversando entre si. |
+| `prints/` | Prints de todas as telas (`prints/gerar-prints.js` refaz). |
+| `redesign-claude-design/`, `Mobile app design project.zip` | O redesign original do Claude Design (referência visual). |
+| `design-original-stitch/` | O primeiro rascunho, feito no Google Stitch. |
+
+## Usar em outro salão
+
+1. Copie este repositório para um novo (ex.: `salao-nome-da-marca`).
+2. Troque o `logo.png` pela logo do salão (escura, fundo transparente, ~640 px de largura).
+3. Em `marca.js`, troque `chave`, `nome`, `nomeCompleto`, `salao.fone`, `salao.mapa` e as `cores` (tirando da paleta da logo; o próprio arquivo traz um exemplo).
+4. Troque os serviços, profissionais e categorias de exemplo no começo de `app/app.js` pelos do salão.
+5. Ligue o GitHub Pages do repositório novo.
+
+## Rodar os testes
+
+```bash
+python3 -m http.server 8000          # na raiz do repositório
+npx playwright install chromium      # uma vez
+node testes/testar.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg
+node testes/testar-abas.js http://localhost:8000/ pasta-para-prints
+node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg prints
+```
 
 ## Regras do fluxo
 
@@ -58,3 +66,7 @@ A versão anterior dos prints (antes do redesign) continua no histórico do Git.
 - **Ao aprovar, o pedido vira um lançamento no Financeiro.** A dona fecha o caixa do dia por lá.
 - A cliente tem perfil (foto, nome, WhatsApp, endereço) e pode deixar observação no agendamento.
 - A confirmar com a dona: cartão e dinheiro entram no Financeiro na aprovação ou só quando o atendimento for concluído.
+
+## O que falta para virar sistema de verdade
+
+Hoje tudo fica no navegador de quem abre. Para uso real: servidor com banco de dados (clientes, agendamentos, serviços, equipe, lançamentos), login da dona, Pix pelo Mercado Pago **na conta do salão** (criar cobrança, webhook, estorno), envio de avisos e hospedagem. O modelo de servidor que já funciona é o do DM Espetinho (mesma lógica de Pix e webhook).

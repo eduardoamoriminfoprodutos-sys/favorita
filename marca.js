@@ -1,0 +1,29 @@
+/* ============================================================
+   MARCA DO SALÃO
+   Para usar o sistema em outro salão, troque só este arquivo
+   e o logo.png (logo escura, fundo transparente). Ver README.md.
+   ============================================================ */
+window.MARCA = (() => {
+  const pasta = new URL(".", document.currentScript.src).href;
+  return {
+    chave: "favorita",                          // identificador curto, sem espaço (separa os dados de cada salão)
+    nome: "Favorita",                           // nome curto, usado em mensagens ("seu horário no Favorita")
+    nomeCompleto: "Favorita Beleza e Bem-Estar",
+    logo: pasta + "logo.png",                   // logo escura, para fundo claro
+    salao: {
+      fone: "94900000000",                      // WhatsApp do salão com DDD, só números (EXEMPLO: trocar)
+      mapa: "https://maps.google.com/?q=Favorita+Beleza+e+Bem-Estar+Tucurui"   // link do "Como chegar" (EXEMPLO: trocar)
+    },
+    /* Cores: só coloque aqui as que mudam em relação ao padrão (bege e dourado da Favorita).
+       Exemplo para uma marca rosa:
+       "--gold": "#B04A6F", "--gold-mid": "#C25A80", "--gold-line": "#D98AA6", "--gold-light": "#F2C4D4",
+       "--gold-tint": "#FBEAF0", "--gold-tint-2": "#FDF4F7", "--gold-grad": "linear-gradient(135deg,#D9739A,#A9445F)" */
+    cores: {}
+  };
+})();
+
+/* aplica as cores da marca por cima do padrão */
+(() => {
+  const r = document.documentElement.style;
+  Object.entries(window.MARCA.cores || {}).forEach(([k, v]) => r.setProperty(k, v));
+})();

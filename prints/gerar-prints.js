@@ -1,13 +1,13 @@
-// Print de todas as telas do protótipo v3 (celular 390x844, 2x). Uso: node prints-v3.js <pasta com render.html e foto-teste.jpg> <saída>
+// Print de todas as telas (celular 390x844, 2x). Uso: node gerar-prints.js <URL da demo/> <foto.jpg> <pasta de saída>
 const { chromium } = require('playwright');
 const fs = require('fs');
 (async () => {
-  const [S, OUT] = process.argv.slice(2);
+  const [URL, FOTO, OUT] = process.argv.slice(2);
   fs.mkdirSync(OUT + '/cliente', { recursive: true }); fs.mkdirSync(OUT + '/salao', { recursive: true });
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  await p.goto('file://' + S + '/render.html'); await p.waitForTimeout(1500);
+  await p.goto(URL); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(1500);   // começa do zero
   const list = [];
   const shot = async (dir, name, desc) => {
     await p.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; }); await p.waitForTimeout(250);
@@ -25,7 +25,7 @@ const fs = require('fs');
   // perfil primeiro, para o catálogo mostrar a saudação e a foto
   await p.click('[data-tab="perfil"]'); await shot('cliente', '01-perfil-vazio', 'Perfil sem dados');
   await p.fill('#p-nome', 'Elika de Brito'); await p.fill('#p-fone', '(94) 99240-9089'); await p.fill('#p-end', 'Rua Bahia, 122, Novo Horizonte');
-  await p.setInputFiles('#foto-input', S + '/foto-teste.jpg'); await p.waitForTimeout(500); await p.click('#salvar-perfil'); await top();
+  await p.setInputFiles('#foto-input', FOTO); await p.waitForTimeout(500); await p.click('#salvar-perfil'); await top();
   await shot('cliente', '02-perfil-com-foto', 'Perfil com foto e dados');
   await p.click('[data-tab="catalogo"]'); await top(); await shot('cliente', '03-catalogo', 'Catálogo: saudação, categorias, serviços');
   await p.click('[data-svc="4"]'); await shot('cliente', '04-escolher-opcao', 'Folha para escolher a opção (Selagem curto/médio/longo)');
