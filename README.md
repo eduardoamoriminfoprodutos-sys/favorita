@@ -59,12 +59,17 @@ Depois de ligar o GitHub Pages (ver abaixo):
 
 ## Rodar os testes
 
+**Sistema com servidor (`cliente/` e `salao/`):** suba tudo no Mac com `FERRAMENTAS=<pasta com embedded-postgres, fastify, pg, dotenv e playwright> node testes/ambiente-local.mjs` (site em `http://127.0.0.1:8090/`, servidor de teste com Pix de mentira) e rode
+`SALAO_LOGIN=dona SALAO_SENHA=senha-mock-teste-123 API=http://127.0.0.1:3920 TESTE_KEY=chave-mock-teste node testes/testar-abas.js http://127.0.0.1:8090/ pasta-para-prints`.
+A `demo/` continua sem servidor (dados no navegador), para apresentar.
+
+
 ```bash
 python3 -m http.server 8000          # na raiz do repositório
 npx playwright install chromium      # uma vez
 node testes/testar.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg
 node testes/testar-abas.js http://localhost:8000/ pasta-para-prints
-node testes/testar-whatsapp.js http://localhost:8000/cliente/ pasta-para-prints
+node testes/testar-whatsapp.js http://127.0.0.1:8090/cliente/ pasta-para-prints   # com o ambiente-local.mjs ligado (o cliente/ fala com o servidor)
 node testes/testar-avaliacoes.js http://localhost:8000/demo/ pasta-para-prints
 node testes/testar-dois-aparelhos.js http://localhost:8000/demo/ pasta-para-prints
 node prints/gerar-prints.js http://localhost:8000/demo/ caminho/para/uma-foto.jpg prints

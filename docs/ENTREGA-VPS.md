@@ -1,5 +1,7 @@
 # Entrega: colocar o sistema da Favorita no ar, sincronizado pela VPS
 
+> **Situação (16/11/2026): no ar na VPS, em modo de apresentação.** Ambiente exclusivo: pasta `/var/www/favorita` (`api/`, `site/`, `uploads/`), banco `favorita` com usuário `favorita` (só ele conecta; testado que não lê o DM e que DM e Central não entram nele), pm2 `favorita-api` na porta **3020** (a 3010 é da Central), Nginx em `api-favorita.lecomigo.tech` e `favorita.lecomigo.tech`, backup diário em `/var/backups/favorita` (cron `/etc/cron.d/favorita-backup`, 7 dias). Código do servidor em `api/` (`server.js`, `schema.sql`, `semente.js`, `criar-admin.js`). Pix em **modo teste** (sem `MP_ACCESS_TOKEN`: o servidor usa um Mercado Pago de mentira, sem dinheiro). **Falta:** DNS dos dois endereços + certificado (certbot), testes no endereço publicado, credencial do Mercado Pago da dona, dados reais do salão. Teste local completo: `testes/ambiente-local.mjs` (ver o cabeçalho do arquivo).
+
 Este documento é para o Claude do VS Code. Objetivo: transformar a demonstração (que hoje guarda tudo no navegador) em **sistema de verdade**, com **ambiente exclusivo da Favorita na VPS do Eduardo**: pasta própria, banco próprio, processo próprio e endereço próprio, **igual ao DM Espetinho**, sem encostar nos outros sistemas.
 
 ## Contexto que já existe
@@ -70,6 +72,10 @@ Partir do modelo de dados do app (`comum/nucleo.js`, objeto `S` e listas `SERVIC
 - `GET /admin/financeiro?dia=`, `POST /admin/caixa/fechar?dia=`.
 - `GET /admin/profissionais/:id/desempenho` (todas as avaliações, inclusive escondidas, médias de 30 dias e anterior, etiquetas mais frequentes, alerta), `POST /admin/avaliacoes/:id/ocultar`, `GET/POST /admin/profissionais/:id/pdi`.
 - CRUD de `/admin/servicos`, `/admin/categorias`, `/admin/profissionais` (com upload de foto: guardar em `/var/www/favorita/uploads/` servido pelo Nginx, ou no banco reduzido).
+
+## Falta no servidor (o app já tem, só na demo)
+
+Concluir atendimento, pop-up de avaliação, nota no card, desempenho, esconder comentário e PDI já existem no front-end, mas **só ligam na `demo/`**: com servidor, `salao.js` esconde o botão "Concluir" e o formulário de PDI (`DADOS.servidor`) e `dados.js` começa `S.avaliacoes` e `S.pdi` vazios. Para ligar: criar as rotas de concluir, avaliações e PDI listadas acima, carregar `S.avaliacoes`/`S.pdi` no `carregar()` e trocar essas condições por chamadas às rotas. Rodar `testes/testar-avaliacoes.js` adaptado contra o ambiente local.
 
 ## Próxima etapa (vender antes): acesso por colaboradora
 

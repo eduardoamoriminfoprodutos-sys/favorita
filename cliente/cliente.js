@@ -101,18 +101,39 @@ function bPagar() {
 
 function vPix() {
   const b = bk(S.pixFor);
-  const code = "00020126580014BR.GOV.BCB.PIX0136salao-exemplo-" + b.id + "5204000053039865406" + sum(b.itens).toFixed(2) + "5802BR5907EXEMPLO6006CIDADE62070503***6304EX" + b.id;
+  if (!b) return `<section class="view">${navBack('data-tab="meus"', "Pagamento Pix")}<div class="empty">Pedido não encontrado.</div></section>`;
+  /* com servidor: valor, QR e código vêm do Mercado Pago (pelo servidor); na demonstração, um código de exemplo */
+  const P = DADOS.servidor && S.pix && S.pix.bid === b.id ? S.pix : null;
+  const valor = P ? P.valor : sum(b.itens);
+  const code = DADOS.servidor ? (P ? P.copia_e_cola : "") : "00020126580014BR.GOV.BCB.PIX0136salao-exemplo-" + b.id + "5204000053039865406" + sum(b.itens).toFixed(2) + "5802BR5907EXEMPLO6006CIDADE62070503***6304EX" + b.id;
+  const qr = P && P.qr_base64 ? `<img src="data:image/png;base64,${P.qr_base64}" alt="QR Code do Pix" style="width:100%;height:100%;image-rendering:pixelated">` : `<canvas id="qr" width="29" height="29" aria-label="QR Code do Pix${DADOS.servidor ? " (teste)" : " (exemplo)"}"></canvas>`;
+  const rodape = !DADOS.servidor
+    ? `<div class="card sec flat"><p class="meta">Protótipo: no sistema de verdade o Mercado Pago avisa o servidor quando o Pix cai e esta tela muda sozinha. Aqui, simule:</p><button class="btn full" style="background:var(--ok)" type="button" id="simular-pix">Simular Pix pago</button></div>`
+    : P && P.teste ? `<div class="card sec flat"><p class="meta"><b>Pix de teste.</b> O salão está em período de testes: nenhum dinheiro é cobrado por este código. Quando o pagamento for confirmado, esta tela muda sozinha.</p></div>`
+    : `<div class="card sec flat"><p class="meta">Assim que o Pix cair, esta tela muda sozinha e o seu pedido vai para o salão. Se não aprovarem, o Pix volta para você.</p></div>`;
   return `<section class="view">
     ${navBack('data-tab="meus"', "Pagamento Pix")}
     <div class="card sec" style="align-items:center;text-align:center;gap:14px">
       <span class="pixtile" style="width:52px;height:52px"><i></i></span>
-      <div><p class="meta">Pague para enviar seu pedido ao salão</p><p style="font-size:28px;font-weight:700;letter-spacing:-.02em">${fmt(sum(b.itens))}</p></div>
-      <div class="qr"><canvas id="qr" width="29" height="29" aria-label="QR Code do Pix (exemplo)"></canvas></div>
+      <div><p class="meta">Pague para enviar seu pedido ao salão</p><p style="font-size:28px;font-weight:700;letter-spacing:-.02em">${fmt(valor)}</p></div>
+      <div class="qr">${qr}</div>
       <div class="waiting"><span class="spin"></span>Aguardando o pagamento</div>
     </div>
-    <div class="card sec"><span class="eyebrow">Pix copia e cola</span><div class="code" id="pix-code">${code}</div><button class="btn ghost full" type="button" id="copiar">Copiar código</button></div>
-    <div class="card sec flat"><p class="meta">Protótipo: no sistema de verdade o Mercado Pago avisa o servidor quando o Pix cai e esta tela muda sozinha. Aqui, simule:</p><button class="btn full" style="background:var(--ok)" type="button" id="simular-pix">Simular Pix pago</button></div>
+    <div class="card sec"><span class="eyebrow">Pix copia e cola</span><div class="code" id="pix-code">${esc(code)}</div><button class="btn ghost full" type="button" id="copiar">Copiar código</button></div>
+    ${rodape}
   </section>`;
+}
+/* com servidor: pergunta a cada 4 s se o Pix caiu; quando cai, vai para Meus horários */
+let pixTimer = null;
+function acompanharPix() {
+  clearInterval(pixTimer);
+  pixTimer = setInterval(async () => {
+    if (S.view !== "pix" || !S.pix) { clearInterval(pixTimer); return; }
+    try {
+      const st = await DADOS.statusPix();
+      if (st === "approved") { clearInterval(pixTimer); toast("Pix confirmado! Pedido enviado ao salão."); go("meus"); }
+    } catch (_) { /* sem internet agora: tenta de novo */ }
+  }, 4000);
 }
 function vMeus() {
   const mine = S.bookings.filter(b => b.mine);
@@ -246,22 +267,44 @@ APP.cliques.push((t, d, e) => {
     S.obs = document.getElementById("f-obs").value.trim();
     if (!S.perfil.nome || S.perfil.fone.replace(/\D/g, "").length < 10) { toast("Preencha seu nome e um WhatsApp com DDD."); return true; }
     const P = S.perfil;
+    if (DADOS.servidor) {
+      const dados = { itens: [...S.cart], profissional: S.pro, dia: S.day, hora: S.time, pagamento: S.pay, pagarNoSalao: S.payIn, observacao: S.obs };
+      let semPix = false;
+      fazer(async () => {
+        const b = await DADOS.enviarPedido(dados);
+        S.cart = []; S.time = null; S.obs = ""; S.meusTab = "prox";
+        if (b.pay === "pix") { try { await DADOS.criarPix(b.id); } catch (_) { semPix = true; } }
+        return b;
+      }, b => {
+        if (b.pay !== "pix") { toast("Pedido enviado! Aguarde a aprovação do salão."); go("meus"); }
+        else if (semPix) { toast(DADOS.msgErro("falha_pix") + " Use o botão Pagar Pix em Meus horários."); go("meus"); }
+        else { go("pix"); acompanharPix(); }
+      });
+      return true;
+    }
     const b = { id: ++seq, nome: P.nome, fone: P.fone, end: P.end, foto: P.foto, itens: [...S.cart], pro: quemNoHorario(), day: S.day, time: S.time, obs: S.obs, pay: S.pay, payIn: S.payIn, paid: false, status: S.pay === "pix" ? "pix" : "aguardando", mine: true, hist: [[hhmm(), "Cliente", "Pedido criado"]] };
     S.bookings.push(b); S.cart = []; S.time = null; S.obs = ""; S.meusTab = "prox";
     if (b.pay === "pix") { S.pixFor = b.id; go("pix"); } else { toast("Pedido enviado! Aguarde a aprovação do salão."); go("meus"); }
     return true;
   }
-  if (d.pagar) { S.pixFor = +d.pagar; go("pix"); return true; }
+  if (d.pagar) {
+    if (DADOS.servidor) { fazer(() => DADOS.criarPix(+d.pagar), () => { go("pix"); acompanharPix(); }); return true; }
+    S.pixFor = +d.pagar; go("pix"); return true;
+  }
   if (t.id === "copiar") {
     const el = document.getElementById("pix-code");
     const sel = () => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Código selecionado. Copie e cole no app do banco."); };
     try { navigator.clipboard.writeText(el.textContent).then(() => toast("Código Pix copiado."), sel); } catch (_) { sel(); }
     return true;
   }
-  if (t.id === "simular-pix") { const b = bk(S.pixFor); b.paid = true; b.status = "aguardando"; b.hist.push([hhmm(), "Sistema", "Pix confirmado pelo Mercado Pago"]); toast("Pix confirmado! Pedido enviado ao salão."); go("meus"); return true; }
+  if (t.id === "simular-pix" && !DADOS.servidor) { const b = bk(S.pixFor); b.paid = true; b.status = "aguardando"; b.hist.push([hhmm(), "Sistema", "Pix confirmado pelo Mercado Pago"]); toast("Pix confirmado! Pedido enviado ao salão."); go("meus"); return true; }
   if (d.meus) { S.meusTab = d.meus; render(); return true; }
   if (t.id === "trocar-foto") { readPerfilFields(); document.getElementById("foto-input").click(); return true; }
-  if (t.id === "salvar-perfil") { readPerfilFields(); toast("Perfil salvo."); render(); return true; }
+  if (t.id === "salvar-perfil") {
+    readPerfilFields();
+    if (DADOS.servidor) { fazer(() => DADOS.salvarPerfil(), ok => toast(ok ? "Perfil salvo." : "Perfil salvo neste aparelho. Ele vai junto no seu próximo agendamento.")); return true; }
+    toast("Perfil salvo."); render(); return true;
+  }
 });
 APP.entradas.push(e => {
   const k = { "p-nome": "nome", "p-fone": "fone", "p-end": "end" }[e.target.id];

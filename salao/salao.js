@@ -12,10 +12,13 @@ function receipt(b) {
   x.fillStyle = "#555"; x.font = "500 22px Montserrat, Arial"; x.fillText("Valor", 36, 150);
   x.fillStyle = "#111"; x.font = "bold 54px Montserrat, Arial"; x.fillText(fmt(sum(b.itens)), 36, 212);
   const pago = (b.hist.find(h => h[2].startsWith("Pix confirmado")) || ["--"])[0];
-  const rows = [["Data", dayLabel(HOJE) + " · " + pago], ["De", b.nome], ["CPF", "***.482.***-**"], ["Para", MARCA.nomeCompleto], ["Instituição", "Mercado Pago"], ["Tipo", "Pix"], ["ID da transação", "E1835200" + (20261113000 + b.id) + "x7k"]];
+  const rows = b.pix   /* dados do pagamento no Mercado Pago, vindos do servidor */
+    ? [["Data", dayLabel(b.pix.dia) + " · " + b.pix.hora], ["De", b.pix.pagador || b.nome], ["Valor pago", fmt(b.pix.valor)], ["Para", MARCA.nomeCompleto], ["Instituição", "Mercado Pago"], ["Tipo", "Pix"], ["ID da transação", b.pix.mpId || "--"]]
+    : [["Data", dayLabel(HOJE) + " · " + pago], ["De", b.nome], ["CPF", "***.482.***-**"], ["Para", MARCA.nomeCompleto], ["Instituição", "Mercado Pago"], ["Tipo", "Pix"], ["ID da transação", "E1835200" + (20261113000 + b.id) + "x7k"]];
   let y = 290;
   rows.forEach(([k, v]) => { x.fillStyle = "#777"; x.font = "500 20px Montserrat, Arial"; x.fillText(k, 36, y); x.fillStyle = "#111"; x.font = "600 23px Montserrat, Arial"; x.fillText(v, 36, y + 32); x.fillStyle = "#EEE"; x.fillRect(36, y + 52, 528, 2); y += 84; });
-  x.fillStyle = "#B5453A"; x.font = "bold 20px Montserrat, Arial"; x.fillText("EXEMPLO · protótipo", 36, 905);
+  const selo = b.ex ? "EXEMPLO" : b.pix ? (b.pix.teste ? "PIX DE TESTE · sem dinheiro de verdade" : "") : "EXEMPLO · protótipo";
+  if (selo) { x.fillStyle = "#B5453A"; x.font = "bold 20px Montserrat, Arial"; x.fillText(selo, 36, 905); }
   b.receipt = c.toDataURL("image/png");
   return b.receipt;
 }
@@ -23,7 +26,23 @@ function receipt(b) {
 /* ===== PAINEL DO SALÃO ===== */
 /* concluir: por enquanto a dona marca no painel. Com o acesso por colaboradora (ver docs/FUTURO-ACESSO-COLABORADORAS.md),
    a própria profissional conclui os atendimentos dela. */
-const podeConcluir = b => b.status === "aprovado";
+const podeConcluir = b => b.status === "aprovado" && !DADOS.servidor;   /* com servidor: entra quando a rota /concluir existir (docs/ENTREGA-VPS.md) */
+function vEntrar() {
+  return `<section class="view">
+    <div class="top"><img src="${LOGO}" alt="${esc(MARCA.nome)}"><div class="top-r"><span class="eyebrow">Painel</span><b>Acesso do salão</b></div></div>
+    <div class="card sec" style="margin-top:28px"><span class="eyebrow">Entrar no painel</span>
+      <label class="field">Usuário<input type="text" id="lg-login" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+      <label class="field">Senha<input type="password" id="lg-senha" autocomplete="current-password"></label>
+      <button class="btn full" type="button" id="lg-entrar">Entrar</button>
+      <p class="meta">Acesso só da dona do salão e de quem ela autorizar.</p></div>
+  </section>`;
+}
+function entrarPainel() {
+  const l = document.getElementById("lg-login"), sn = document.getElementById("lg-senha");
+  if (!l || !l.value.trim() || !sn.value) { toast("Preencha o usuário e a senha."); return; }
+  fazer(() => DADOS.entrarSalao(l.value.trim().toLowerCase(), sn.value), () => { S.tab = "pedidos"; window.scrollTo(0, 0); });
+}
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target && e.target.id === "lg-senha") entrarPainel(); });
 function topSalao() {
   return `<div class="top"><img src="${LOGO}" alt="${esc(MARCA.nome)}"><div class="top-r"><span class="eyebrow">Painel</span><b>${dayShort(HOJE)}</b></div></div>`;
 }
@@ -202,6 +221,7 @@ function vEquipe() {
     ${PROS.length ? `<div class="tgrid">${PROS.map(p => { const n = S.bookings.filter(b => b.pro === p.id && naAgenda(b) && b.day === HOJE).length, D = desempenho(p);
       return `<button class="card tcard ${D.alerta ? "warn" : ""}" type="button" data-proview="${p.id}">${D.alerta ? `<span class="tflag">Atenção</span>` : ""}${ava(p.foto, p.nome, "lg")}<b><span class="dot" style="background:${p.cor};margin-right:6px"></span>${esc(p.nome)}</b>${resumoNota(p)}<small>${esc(p.faz || p.cats.join(", "))}</small><span class="meta" style="color:var(--gold);font-weight:600">${p.ini.slice(0, 2)}h–${p.fim.slice(0, 2)}h · ${n} hoje</span></button>`; }).join("")}</div>`
       : `<div class="empty">Nenhuma profissional cadastrada. Adicione a primeira para abrir a agenda.</div>`}
+    ${DADOS.servidor ? `<button class="btn ghost full" type="button" id="sair-painel">Sair do painel</button>` : ""}
   </section>`;
 }
 const PDI_TIPOS = ["Conversa de alinhamento", "Treinamento", "Acompanhamento no atendimento", "Elogio / reconhecimento"];
@@ -223,14 +243,14 @@ function vProPerfil() {
     </div>
     ${tagsOrd.length ? `<div class="card sec"><span class="eyebrow">O que as clientes mais dizem</span><div class="rtags big">${tagsOrd.map(([x, c]) => `<span class="${TAGS_RUINS.includes(x) ? "ruim" : "bom"}">${esc(x)} · ${c}</span>`).join("")}</div></div>` : ""}
     <div class="card sec"><div class="row"><span class="eyebrow">Comentários</span><div class="segm mini" role="group"><button type="button" data-avf="todas" aria-pressed="${filtro === "todas"}">Todas</button><button type="button" data-avf="neg" aria-pressed="${filtro === "neg"}">Negativas</button><button type="button" data-avf="pos" aria-pressed="${filtro === "pos"}">Positivas</button></div></div>
-      <div class="revs">${lista.length ? lista.map(a => cardAvaliacao(a, { dona: true })).join("") : `<p class="meta">Nenhuma avaliação neste filtro.</p>`}</div>
+      <div class="revs">${lista.length ? lista.map(a => cardAvaliacao(a, { dona: !DADOS.servidor })).join("") : `<p class="meta">Nenhuma avaliação neste filtro.</p>`}</div>
       <p class="meta">Esconder do app tira só o texto da vista das clientes. A nota continua contando, para a avaliação ser justa.</p></div>
     <div class="card sec"><span class="eyebrow">Acompanhamento (PDI)</span>
       ${acoes.length ? acoes.map(x => `<div class="pdi"><b>${esc(x.tipo)}</b><small>${dayLabel(x.dia)}</small>${x.texto ? `<p>${esc(x.texto)}</p>` : ""}</div>`).join("") : `<p class="meta">Nenhuma ação registrada ainda.</p>`}
-      <div class="sec" style="border-top:1px solid var(--line-2);padding-top:12px"><span class="meta" style="font-weight:600">Registrar ação</span>
+      ${DADOS.servidor ? `<p class="meta">O registro de PDI entra quando o servidor tiver essa parte (docs/ENTREGA-VPS.md).</p>` : `<div class="sec" style="border-top:1px solid var(--line-2);padding-top:12px"><span class="meta" style="font-weight:600">Registrar ação</span>
         <div class="chips" style="flex-wrap:wrap;margin:0;padding:0" role="group">${PDI_TIPOS.map(x => `<button class="chip" type="button" data-pditipo="${x}" aria-pressed="${pd.tipo === x}">${x}</button>`).join("")}</div>
         <textarea id="pdi-texto" placeholder="Ex.: conversamos sobre pontualidade; combinamos chegar 15 min antes e revisar em 30 dias.">${esc(pd.texto)}</textarea>
-        <button class="btn full" type="button" id="pdi-salvar">Registrar ação</button></div>
+        <button class="btn full" type="button" id="pdi-salvar">Registrar ação</button></div>`}
     </div>
   </section>`;
 }
@@ -274,6 +294,8 @@ function aprovar(b) {
 
 /* ===== registro no motor ===== */
 APP.telas.salao = () => {
+  if (DADOS.servidor && !DADOS.logado()) return { html: vEntrar() };
+  if (S.detail && !bk(S.detail)) S.detail = null;
   if (S.detail) return { html: vDetalhe() };
   if (S.draft) return { html: vProEdit() };
   if (S.proView) return { html: vProPerfil() };
@@ -303,6 +325,8 @@ APP.cliques.push((t, d, e) => {
     b.status = "concluido"; b.concluidoPor = "Dona"; b.hist.push([hhmm(), "Dona", "Concluiu o atendimento"]);
     toast("Atendimento concluído. A cliente vai receber o convite para avaliar."); render(); return true;
   }
+  if (t.id === "lg-entrar") { entrarPainel(); return true; }
+  if (t.id === "sair-painel") { fazer(() => DADOS.sairSalao(), () => { S.tab = "pedidos"; toast("Você saiu do painel."); }); return true; }
   if (d.proview) { S.proView = d.proview; S.avFiltro = "todas"; S.pdiDraft = null; render(); window.scrollTo(0, 0); return true; }
   if (d.proviewfechar) { S.proView = null; render(); window.scrollTo(0, 0); return true; }
   if (d.avf) { S.avFiltro = d.avf; render(); return true; }
@@ -316,8 +340,19 @@ APP.cliques.push((t, d, e) => {
   /* salão: pedidos */
   if (d.open) { detailFrom = window.scrollY; S.detail = +d.open; render(); window.scrollTo(0, 0); return true; }
   if (d.fechar) { S.detail = null; render(); window.scrollTo(0, detailFrom || 0); return true; }
-  if (d.apr) { aprovar(bk(+d.apr)); render(); return true; }
+  if (d.apr) {
+    if (DADOS.servidor) { fazer(() => DADOS.salao("POST", "/admin/agendamentos/" + (+d.apr) + "/aprovar"), () => toast("Aprovado. Lançado no Financeiro e a cliente já vê confirmado.")); return true; }
+    aprovar(bk(+d.apr)); render(); return true;
+  }
   if (d.rej) { S.sheet = { t: "rej", id: +d.rej }; render(); return true; }
+  if (d.motivo && DADOS.servidor) {
+    const b = bk(S.sheet.id), pago = b.pay === "pix" && b.paid; S.sheet = null;
+    fazer(() => DADOS.salao("POST", "/admin/agendamentos/" + b.id + "/reprovar", { motivo: d.motivo }), () => {
+      const nb = bk(b.id);
+      toast(!pago ? "Reprovado. A cliente foi avisada." : (nb && nb.refund ? "Reprovado. Pix devolvido à cliente." : "Reprovado, mas o Pix não voltou sozinho: devolva pelo app do Mercado Pago."));
+    });
+    return true;
+  }
   if (d.motivo) {
     const b = bk(S.sheet.id); b.status = "reprovado"; b.motivo = d.motivo; b.hist.push([hhmm(), "Dona", "Reprovou: " + d.motivo]);
     if (b.pay === "pix" && b.paid) { b.refund = true; b.hist.push([hhmm(), "Sistema", "Pix devolvido pelo Mercado Pago"]); }
@@ -332,8 +367,14 @@ APP.cliques.push((t, d, e) => {
   if (d.encaixe) { toast("Encaixe: no sistema real a dona marca um horário direto pelo painel a partir de " + d.encaixe + "."); return true; }
   if (d.finf) { S.finF = d.finf; render(); return true; }
   if (t.id === "fechar-caixa") { S.sheet = { t: "caixa" }; render(); return true; }
+  if (t.id === "caixa-ok" && DADOS.servidor) { S.sheet = null; fazer(() => DADOS.salao("POST", "/admin/caixa/fechar", { dia: S.finDay }), () => toast("Caixa do dia fechado.")); return true; }
   if (t.id === "caixa-ok") { const dia = S.lanc.filter(l => l.day === S.finDay); S.caixas[S.finDay] = { at: hhmm(), total: dia.reduce((a, l) => a + l.valor, 0) }; S.sheet = null; toast("Caixa do dia fechado."); render(); return true; }
   /* serviços */
+  if (d.tog && DADOS.servidor) {
+    const s = svc(+d.tog), nd = s.disp === "disponivel" ? "pausado" : "disponivel";
+    fazer(() => DADOS.salao("PUT", "/admin/servicos/" + s.id, { disp: nd }), () => toast(s.nome + (nd === "disponivel" ? " disponível para as clientes." : " pausado hoje.")));
+    return true;
+  }
   if (d.tog) { const s = svc(+d.tog); s.disp = s.disp === "disponivel" ? "pausado" : "disponivel"; toast(s.nome + (s.disp === "disponivel" ? " disponível para as clientes." : " pausado hoje.")); render(); return true; }
   if (d.svcedit) {
     const s = d.svcedit === "novo" ? { id: "novo", nome: "", desc: "", preco: 50, min: 60, cat: CATS[0], disp: "disponivel", foto: "", opcoes: [] } : svc(+d.svcedit);
@@ -355,11 +396,21 @@ APP.cliques.push((t, d, e) => {
     lerSvc(); const e2 = S.sdraft;
     if (!e2.nome.trim()) { toast("Coloque o nome do serviço."); return true; }
     const dados = { nome: e2.nome.trim(), desc: e2.desc.trim(), preco: Math.max(0, +e2.preco || 0), min: +e2.min, cat: e2.cat, disp: e2.disp, foto: e2.foto, opcoes: e2.opcoes };
+    if (DADOS.servidor) {
+      fazer(() => e2.id === "novo" ? DADOS.salao("POST", "/admin/servicos", dados) : DADOS.salao("PUT", "/admin/servicos/" + e2.id, dados),
+        () => { toast(e2.id === "novo" ? dados.nome + " publicado." : "Alterações em " + dados.nome + " salvas."); S.sdraft = null; window.scrollTo(0, 0); });
+      return true;
+    }
     if (e2.id === "novo") { SERVICES.push({ id: ++seq, ...dados }); toast(dados.nome + " publicado."); }
     else { Object.assign(SERVICES.find(s => s.id === e2.id), dados); toast("Alterações em " + dados.nome + " salvas."); }
     S.sdraft = null; render(); window.scrollTo(0, 0); return true;
   }
   if (t.id === "svc-dup") { lerSvc(); S.sdraft = { ...S.sdraft, id: "novo", nome: S.sdraft.nome + " (cópia)", opcoes: S.sdraft.opcoes.map(o => ({ ...o })) }; toast("Cópia criada. Ajuste e publique."); render(); window.scrollTo(0, 0); return true; }
+  if (t.id === "svc-arq" && DADOS.servidor) {
+    const id = S.sdraft.id, nome = S.sdraft.nome;
+    fazer(() => DADOS.salao("PUT", "/admin/servicos/" + id, { disp: "arquivado" }), () => { S.cart = S.cart.filter(k => it(k).sid !== id); S.sdraft = null; toast(nome + " arquivado."); });
+    return true;
+  }
   if (t.id === "svc-arq") { const s = SERVICES.find(x => x.id === S.sdraft.id); s.disp = "arquivado"; S.cart = S.cart.filter(k => it(k).sid !== s.id); S.sdraft = null; toast(s.nome + " arquivado."); render(); return true; }
   if (t.id === "abrir-cats") { S.cats = true; render(); window.scrollTo(0, 0); return true; }
   if (d.catsfechar) { S.cats = false; render(); return true; }
@@ -367,12 +418,14 @@ APP.cliques.push((t, d, e) => {
     const n = document.getElementById("cat-nova").value.trim();
     if (!n) { toast("Escreva o nome da categoria."); return true; }
     if (CATS.some(c => c.toLowerCase() === n.toLowerCase())) { toast("Essa categoria já existe."); return true; }
+    if (DADOS.servidor) { fazer(() => DADOS.salao("POST", "/admin/categorias", { nome: n }), () => toast("Categoria " + n + " criada.")); return true; }
     CATS.push(n); toast("Categoria " + n + " criada."); render(); return true;
   }
   if (d.rmcat) {
     const c = CATS[+d.rmcat];
     if (SERVICES.some(s => s.cat === c && s.disp !== "arquivado")) { toast("Mova ou arquive os serviços de " + c + " antes de excluir."); return true; }
     if (CATS.length === 1) { toast("Precisa ter pelo menos uma categoria."); return true; }
+    if (DADOS.servidor) { fazer(() => DADOS.salao("POST", "/admin/categorias/excluir", { nome: c }), () => toast("Categoria " + c + " excluída.")); return true; }
     CATS.splice(+d.rmcat, 1); PROS.forEach(p => p.cats = p.cats.filter(x => x !== c)); toast("Categoria " + c + " excluída."); render(); return true;
   }
   /* equipe */
@@ -390,12 +443,22 @@ APP.cliques.push((t, d, e) => {
     if (!dr.cats.length) { toast("Escolha pelo menos uma especialidade."); return true; }
     if (toMin(dr.fim) - toMin(dr.ini) < 60) { toast("O expediente precisa ter pelo menos 1 hora."); return true; }
     const dados = { nome: dr.nome.trim(), foto: dr.foto, cats: dr.cats, faz: dr.faz.trim() || dr.cats.join(", "), ini: dr.ini, fim: dr.fim, cor: dr.cor };
+    if (DADOS.servidor) {
+      fazer(() => dr.id === "novo" ? DADOS.salao("POST", "/admin/profissionais", dados) : DADOS.salao("PUT", "/admin/profissionais/" + dr.id, dados),
+        () => { toast(dr.id === "novo" ? dados.nome + " entrou na equipe." : "Dados de " + dados.nome + " salvos."); S.draft = null; window.scrollTo(0, 0); });
+      return true;
+    }
     if (dr.id === "novo") { PROS.push({ id: "p" + (++seq), ...dados }); toast(dados.nome + " entrou na equipe."); }
     else { Object.assign(PROS.find(p => p.id === dr.id), dados); toast("Dados de " + dados.nome + " salvos."); }
     S.draft = null; render(); window.scrollTo(0, 0); return true;
   }
   if (d.delask) { S.confirmDel = true; render(); return true; }
   if (d.delcancel) { S.confirmDel = false; render(); return true; }
+  if (t.id === "pro-excluir" && DADOS.servidor) {
+    const id = S.draft.id, n = S.draft.nome;
+    fazer(() => DADOS.salao("DELETE", "/admin/profissionais/" + id), () => { S.draft = null; S.proView = null; S.confirmDel = false; toast(n + " saiu da equipe."); window.scrollTo(0, 0); });
+    return true;
+  }
   if (t.id === "pro-excluir") { const i = PROS.findIndex(p => p.id === S.draft.id), n = PROS[i].nome; PROS.splice(i, 1); S.draft = null; S.proView = null; S.confirmDel = false; toast(n + " saiu da equipe."); render(); window.scrollTo(0, 0); return true; }
 });
 APP.mudancas.push(e => {
@@ -405,6 +468,7 @@ APP.mudancas.push(e => {
     const i = +e.target.dataset.catidx, velho = CATS[i], novo = e.target.value.trim();
     if (!novo || novo === velho) { e.target.value = velho; return true; }
     if (CATS.includes(novo)) { toast("Essa categoria já existe."); e.target.value = velho; return true; }
+    if (DADOS.servidor) { fazer(() => DADOS.salao("PUT", "/admin/categorias", { de: velho, para: novo }), () => { if (S.cat === velho) S.cat = novo; toast("Categoria renomeada para " + novo + "."); }); return true; }
     CATS[i] = novo; SERVICES.forEach(s => { if (s.cat === velho) s.cat = novo; }); PROS.forEach(p => p.cats = p.cats.map(x => x === velho ? novo : x));
     if (S.cat === velho) S.cat = novo;
     toast("Categoria renomeada para " + novo + "."); render(); return true;

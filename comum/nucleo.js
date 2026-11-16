@@ -131,7 +131,7 @@ function slotsFor(proId, dk, need) {
   const p = pro(proId), out = [];
   if (!aberto(dk)) return out;
   const busy = S.bookings.filter(b => b.pro === proId && b.day === dk && b.status !== "reprovado" && b.status !== "pix")
-    .map(b => [toMin(b.time), toMin(b.time) + mins(b.itens)]);
+    .map(b => [toMin(b.time), toMin(b.time) + (b.dur != null ? b.dur : mins(b.itens))]);   /* b.dur: horário ocupado que vem do servidor, sem dado da cliente */
   const now = new Date(), isToday = dk === HOJE;
   for (let t = toMin(p.ini); t + need <= toMin(p.fim); t += 30) {
     const clash = busy.some(([a, z]) => t < z && t + need > a);
